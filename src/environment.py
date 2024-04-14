@@ -5,7 +5,7 @@ import math
 
 
 class Environment:
-    def __init__(self, n_uavs=3, m_targets=5, Na=5, xmax=2000, ymax=2000, dmin=5):
+    def __init__(self, n_uavs=3, m_targets=5, xmax=2000, ymax=2000, dmin=5):
         # size of the environment
         self.dmin = dmin
         self.xmax = xmax

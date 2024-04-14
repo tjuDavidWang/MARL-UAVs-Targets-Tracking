@@ -45,6 +45,11 @@ class UAV:
         return (2 * na - self.Na - 1) * self.hmax / (self.Na - 1)
 
     def update_position(self, a_idx):
+        '''
+        receive the index from action space, then update the current position
+        :param a_idx:
+        :return:
+        '''
         a = self.discrete_action(a_idx)
         dx = dt * self.vmax * np.cos(self.h)  # x 方向位移
         dy = dt * self.vmax * np.sin(self.h)  # y 方向位移
@@ -55,6 +60,11 @@ class UAV:
         return self.x, self.y, self.h  # 返回agent的位置和朝向(heading/theta)
 
     def observe_target(self, targets_list):
+        '''
+        Observing target with a radius within dp
+        :param targets_list: should be the overall targets list
+        :return:
+        '''
         self.observation = {}  # Reset observed targets
         for target in targets_list:
             dist = self.distance(target)
@@ -64,13 +74,23 @@ class UAV:
                 self.observation[target] = -1  # Not observed but within perception range
 
     def calculate_multi_target_tracking_reward(self):
+        '''
+        calculate multi target tracking reward
+        :return: scalar
+        '''
         track_reward = 0
         for target, distance in self.observation.items():
             if distance <= self.dp:
                 track_reward += 1 + (self.dp - distance) / self.dp
         return track_reward
 
-    def calculate_duplicate_tracking_punishment(self, uavs, radio=2):  # radio用来控制惩罚的范围
+    def calculate_duplicate_tracking_punishment(self, uavs, radio=2):
+        '''
+        calculate duplicate tracking punishment
+        :param uavs: the uav list
+        :param radio: radio用来控制惩罚的范围, 超出多远才算入惩罚
+        :return: scalar
+        '''
         total_punishment = 0
         for other_uav in uavs:
             if other_uav != self:
@@ -81,7 +101,13 @@ class UAV:
         return total_punishment
 
     def calculate_boundary_punishment(self, xmax, ymax, dmin):
-        boundary_punishment = 0
+        '''
+
+        :param xmax: border of the map at x-axis
+        :param ymax: border of the map at y-axis
+        :param dmin: minimum distance to the border
+        :return: scalar
+        '''
         if self.x < dmin or self.x > (xmax - dmin) or self.y < dmin or self.y > (ymax - min):
             boundary_punishment = -0.5 * (self.dp - dmin) / self.dp
         else:
