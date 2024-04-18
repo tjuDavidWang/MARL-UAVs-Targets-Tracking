@@ -4,6 +4,7 @@ import torch
 import collections
 import random
 
+
 class ReplayBuffer:
     def __init__(self, capacity):
         self.buffer = collections.deque(maxlen=capacity) 
@@ -30,18 +31,18 @@ def moving_average(a, window_size):
 
 
 def train_on_policy_agent(env, agents, num_episodes):
-    '''
+    """
     :param env:
     :param agents:
     :param num_episodes: 实际上指的是持续的时间
-    :return: 
-    '''
+    :return:
+    """
     return_list = []
     for i in range(num_episodes):
         env.reset()
         with tqdm(total=num_episodes, desc='Iteration %d' % i) as pbar:
             episode_return = 0
-            for uav in env.uavs:
+            for uav in env.uav_s:
                 communication, observation, sb = uav.get_local_state()
                 state = (communication, observation, sb)
                 transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': [], 'dones': []}
@@ -57,9 +58,11 @@ def train_on_policy_agent(env, agents, num_episodes):
             return_list.append(episode_return)
             agents.l(transition_dict)
             if (i+1) % 10 == 0:
-                pbar.set_postfix({'episode': '%d' % (num_episodes * i + 1), 'return': '%.3f' % np.mean(return_list[-10:])})
+                pbar.set_postfix({'episode': '%d' % (num_episodes * i + 1),
+                                  'return': '%.3f' % np.mean(return_list[-10:])})
             pbar.update(1)
     return return_list
+
 
 def train_off_policy_agent(env, agent, num_episodes, replay_buffer, minimal_size, batch_size):
     return_list = []
@@ -77,21 +80,23 @@ def train_off_policy_agent(env, agent, num_episodes, replay_buffer, minimal_size
                     episode_return += reward
                     if replay_buffer.size() > minimal_size:
                         b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size)
-                        transition_dict = {'states': b_s, 'actions': b_a, 'next_states': b_ns, 'rewards': b_r, 'dones': b_d}
+                        transition_dict = {'states': b_s, 'actions': b_a,
+                                           'next_states': b_ns, 'rewards': b_r, 'dones': b_d}
                         agent.update(transition_dict)
                 return_list.append(episode_return)
                 if (i_episode+1) % 10 == 0:
-                    pbar.set_postfix({'episode': '%d' % (num_episodes/10 * i + i_episode+1), 'return': '%.3f' % np.mean(return_list[-10:])})
+                    pbar.set_postfix({'episode': '%d' % (num_episodes/10 * i + i_episode+1),
+                                      'return': '%.3f' % np.mean(return_list[-10:])})
                 pbar.update(1)
     return return_list
 
 
-def compute_advantage(gamma, lmbda, td_delta):
+def compute_advantage(gamma, _lambda, td_delta):
     td_delta = td_delta.detach().numpy()
     advantage_list = []
     advantage = 0.0
     for delta in td_delta[::-1]:
-        advantage = gamma * lmbda * advantage + delta
+        advantage = gamma * _lambda * advantage + delta
         advantage_list.append(advantage)
     advantage_list.reverse()
     return torch.tensor(advantage_list, dtype=torch.float)

@@ -1,133 +1,138 @@
 import numpy as np
 import math
 
+from typing import List
 
 dt = 0.1
 
 
 class UAV:
-    def __init__(self, x0, y0, h0, vmax=10, hmax=np.pi/4, Na=5, dc=20, dp=200):
-        '''
+    def __init__(self, x0: float, y0: float, h0: float, v_max: float = 10, h_max: float = np.pi / 4,
+                 na: int = 5, dc: float = 20, dp: float = 200):
+        """
         :param x0: scalar
         :param y0: scalar
         :param h0: scalar
-        :param vmax: scalar
-        :param hmax: scalar
-        :param Na: scalar
+        :param v_max: scalar
+        :param h_max: scalar
+        :param na: scalar
         :param dc: scalar
         :param dp: scalar
-        '''
+        """
         # the position, velocity and heading of this uav
         self.x = x0
         self.y = y0
         self.h = h0
-        self.vmax = vmax
+        self.v_max = v_max
 
         # the max heading angular rate and the action of this uav
-        self.hmax = hmax
-        self.Na = Na
-        self.na = Na - 1
+        self.h_max = h_max
+        self.Na = na
+        self.a = na - 1
 
         # the maximum communication distance and maximum perception distance
         self.dc = dc
         self.dp = dp
 
         # set of local information
-        self.communication = {}
-        self.target_observation = {}
-        self.uav_observation = {}
+        self.communication = []
+        self.target_observation = []
+        self.uav_observation = []
 
         # reward
         self.raw_reward = 0
         self.reward = 0
 
-    def distance(self, target):
-        '''
+    def distance(self, target: 'UAV') -> float:
+        """
         calculate the distance from uav to target
-        :param uav:
         :param target: class UAV
         :return: scalar
-        '''
+        """
         return np.sqrt((self.x - target.x) ** 2 + (self.y - target.y) ** 2)
 
-    def discrete_action(self, a_idx):
-        '''
+    def discrete_action(self, a_idx: int) -> float:
+        """
         from the action space index to the real difference
         :param a_idx: {0,1,...,Na - 1}
         :return: action : scalar 即角度改变量
-        '''
+        """
         na = a_idx + 1  # 从 1 开始索引
-        return (2 * na - self.Na - 1) * self.hmax / (self.Na - 1)
+        return (2 * na - self.Na - 1) * self.h_max / (self.Na - 1)
 
-    def update_position(self, a_idx):
-        '''
+    def update_position(self, a_idx: int) -> (float, float, float):
+        """
         receive the index from action space, then update the current position
         :param a_idx: {0,1,...,Na - 1}
         :return:
-        '''
-        self.na = self.discrete_action(a_idx)
-        dx = dt * self.vmax * np.cos(self.h)  # x 方向位移
-        dy = dt * self.vmax * np.sin(self.h)  # y 方向位移
+        """
+        self.a = self.discrete_action(a_idx)
+        dx = dt * self.v_max * np.cos(self.h)  # x 方向位移
+        dy = dt * self.v_max * np.sin(self.h)  # y 方向位移
         self.x += dx
         self.y += dy
-        self.h += dt * self.na  # 更新朝向角度
+        self.h += dt * self.a  # 更新朝向角度
         self.h = (self.h + np.pi) % (2 * np.pi) - np.pi  # 确保朝向角度在 [-pi, pi) 范围内
         return self.x, self.y, self.h  # 返回agent的位置和朝向(heading/theta)
 
-    def observe_target(self, targets_list):
-        '''
+    def observe_target(self, targets_list: List['UAV']):
+        """
         Observing target with a radius within dp
         :param targets_list: [class UAV]
         :return:
-        '''
+        """
         self.target_observation = []  # Reset observed targets
         for target in targets_list:
             dist = self.distance(target)
             if dist <= self.dp:
-                self.target_observation.append((target.x, target.y, np.cos(target.h) * target.vmax, np.sin(target.h) * target.vmax))
+                self.target_observation.append((target.x,
+                                                target.y,
+                                                np.cos(target.h) * target.v_max,
+                                                np.sin(target.h) * target.v_max))
             else:
                 self.target_observation.append((0, 0, 0, 0))  # Not observed but within perception range
 
-    def observe_uav(self, uavs_list):  # communication
-        '''
-        communicate with other uavs with a radius within dp
-        :param uavs_list: [class UAV]
+    def observe_uav(self, uav_list: List['UAV']):  # communication
+        """
+        communicate with other uav_s with a radius within dp
+        :param uav_list: [class UAV]
         :return:
-        '''
+        """
         self.uav_observation = []  # Reset observed targets
-        for uav in uavs_list:
+        for uav in uav_list:
             dist = self.distance(uav)
             if dist <= self.dc:
-                self.uav_observation.append((uav.x, uav.y, np.cos(uav.h) * uav.vmax, np.sin(uav.h) * uav.vmax, uav.na))
+                self.uav_observation.append((uav.x, uav.y, np.cos(uav.h) * uav.v_max, np.sin(uav.h) * uav.v_max, uav.a))
             else:
                 self.uav_observation.append((0, 0, 0, 0, 0))  # Not observed but within perception range
 
-    def get_local_state(self):
-        '''
+    def get_local_state(self) -> (List[(float, float, float, float, int)],
+                                  List[(float, float, float, float)], (float, float, int)):
+        """
         :return: [(x, y, vx, by, na),...] for uav, [(x, y, vx, vy)] for targets, (x, y, na) for itself
-        '''
-        return self.uav_observation, self.target_observation, (self.x, self.y, self.na)
+        """
+        return self.uav_observation, self.target_observation, (self.x, self.y, self.a)
 
-    def calculate_multi_target_tracking_reward(self):
-        '''
+    def calculate_multi_target_tracking_reward(self) -> float:
+        """
         calculate multi target tracking reward
         :return: scalar
-        '''
+        """
         track_reward = 0
-        for target, distance in self.observation.items():
+        for target, distance in self.target_observation:
             if distance <= self.dp:
                 track_reward += 1 + (self.dp - distance) / self.dp
         return track_reward
 
-    def calculate_duplicate_tracking_punishment(self, uavs, radio=2):
-        '''
+    def calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=2) -> float:
+        """
         calculate duplicate tracking punishment
-        :param uavs: [class UAV]
+        :param uav_list: [class UAV]
         :param radio: radio用来控制惩罚的范围, 超出多远才算入惩罚
         :return: scalar
-        '''
+        """
         total_punishment = 0
-        for other_uav in uavs:
+        for other_uav in uav_list:
             if other_uav != self:
                 distance = self.distance(other_uav)
                 if distance <= radio * self.dp:
@@ -135,29 +140,28 @@ class UAV:
                     total_punishment += punishment
         return total_punishment
 
-    def calculate_boundary_punishment(self, xmax, ymax, dmin):
-        '''
-
-        :param xmax: border of the map at x-axis, scalar
-        :param ymax: border of the map at y-axis, scalar
-        :param dmin: minimum distance to the border, scalar
-        :return: scalar
-        '''
-        if self.x < dmin or self.x > (xmax - dmin) or self.y < dmin or self.y > (ymax - min):
-            boundary_punishment = -0.5 * (self.dp - dmin) / self.dp
+    def calculate_boundary_punishment(self, x_max: float, y_max: float, d_min: float) -> float:
+        """
+        :param x_max: border of the map at x-axis, scalar
+        :param y_max: border of the map at y-axis, scalar
+        :param d_min: minimum distance to the border, scalar
+        :return:
+        """
+        if self.x < d_min or self.x > (x_max - d_min) or self.y < d_min or self.y > (y_max - d_min):
+            boundary_punishment = -0.5 * (self.dp - d_min) / self.dp
         else:
             boundary_punishment = 0
         return boundary_punishment
     
-    def calculate_cooperative_reward(self, uavs, a=0.5):
-        '''
+    def calculate_cooperative_reward(self, uav_list: List['UAV'], a=0.5):
+        """
         calculate cooperative reward
-        :param uavs: [class UAV]
+        :param uav_list: [class UAV]
         :param a:
         :return:
-        '''
+        """
         neighbor_rewards = []
-        for other_uav in uavs:
+        for other_uav in uav_list:
             if other_uav != self and self.distance(other_uav) <= self.dp:
                 neighbor_rewards.append(other_uav.raw_reward)
 
