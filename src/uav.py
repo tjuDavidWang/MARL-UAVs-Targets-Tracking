@@ -102,12 +102,16 @@ class UAV:
         for uav in uav_list:
             dist = self.distance(uav)
             if dist <= self.dc:
-                self.uav_observation.append((uav.x, uav.y, np.cos(uav.h) * uav.v_max, np.sin(uav.h) * uav.v_max, uav.a))
+                self.uav_observation.append((uav.x,
+                                             uav.y,
+                                             np.cos(uav.h) * uav.v_max,
+                                             np.sin(uav.h) * uav.v_max,
+                                             uav.a))
             else:
                 self.uav_observation.append((0, 0, 0, 0, 0))  # Not observed but within perception range
 
-    def get_local_state(self) -> (List[(float, float, float, float, int)],
-                                  List[(float, float, float, float)], (float, float, int)):
+    def get_local_state(self) -> ([(float, float, float, float, int)],
+                                  [(float, float, float, float)], (float, float, int)):
         """
         :return: [(x, y, vx, by, na),...] for uav, [(x, y, vx, vy)] for targets, (x, y, na) for itself
         """
