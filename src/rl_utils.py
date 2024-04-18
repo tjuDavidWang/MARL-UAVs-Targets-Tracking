@@ -30,10 +30,10 @@ def moving_average(a, window_size):
     return np.concatenate((begin, middle, end))
 
 
-def train_on_policy_agent(env, agents, num_episodes):
+def train_on_policy_agent(env, agent, num_episodes):
     """
     :param env:
-    :param agents:
+    :param agent:
     :param num_episodes: 实际上指的是持续的时间
     :return:
     """
@@ -42,21 +42,20 @@ def train_on_policy_agent(env, agents, num_episodes):
         env.reset()
         with tqdm(total=num_episodes, desc='Iteration %d' % i) as pbar:
             episode_return = 0
-            for uav in env.uav_s:
-                communication, observation, sb = uav.get_local_state()
-                state = (communication, observation, sb)
+            for uav in env.uav_list:
+                state = uav.get_local_state()  # 12
                 transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': [], 'dones': []}
-                action = agents.take_action(state)
+                action = agent.take_action(state)
                 next_state, reward = env.step(action)
                 transition_dict['states'].append(state)
                 transition_dict['actions'].append(action)
                 transition_dict['next_states'].append(next_state)
                 transition_dict['rewards'].append(reward)
-                state = next_state
+                # state = next_state
                 episode_return += reward
 
             return_list.append(episode_return)
-            agents.l(transition_dict)
+            agent.l(transition_dict)
             if (i+1) % 10 == 0:
                 pbar.set_postfix({'episode': '%d' % (num_episodes * i + 1),
                                   'return': '%.3f' % np.mean(return_list[-10:])})

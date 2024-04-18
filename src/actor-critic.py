@@ -41,14 +41,11 @@ class ActorCritic:
         self.device = device
 
     def take_action(self, states):
-        actions = []
-        for state in states:
-            states = torch.tensor([states], dtype=torch.float).to(self.device)
-            probs = self.actor(states)
-            action_dist = torch.distributions.Categorical(probs)
-            action = action_dist.sample()
-            actions.append(action.item())
-        return actions
+        states = torch.tensor([states], dtype=torch.float).to(self.device)
+        probs = self.actor(states)
+        action_dist = torch.distributions.Categorical(probs)
+        action = action_dist.sample()
+        return action
 
     def update(self, transition_dict):
         states = torch.tensor(transition_dict['states'],

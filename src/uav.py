@@ -51,6 +51,18 @@ class UAV:
         """
         return np.sqrt((self.x - target.x) ** 2 + (self.y - target.y) ** 2)
 
+    @staticmethod
+    def distance_(x1, y1, x2, y2) -> float:
+        """
+        calculate the distance from uav to target
+        :param x2:
+        :param y1:
+        :param x1:
+        :param y2:
+        :return: scalar
+        """
+        return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
     def discrete_action(self, a_idx: int) -> float:
         """
         from the action space index to the real difference
@@ -89,10 +101,25 @@ class UAV:
                                                 target.y,
                                                 np.cos(target.h) * target.v_max,
                                                 np.sin(target.h) * target.v_max))
+
+    def observe_target_with_fixed_size(self, targets_list: List['UAV']):
+        """
+        Observing target with a radius within dp
+        :param targets_list: [class UAV]
+        :return:
+        """
+        self.target_observation = []  # Reset observed targets
+        for target in targets_list:
+            dist = self.distance(target)
+            if dist <= self.dp:
+                self.target_observation.append((target.x,
+                                                target.y,
+                                                np.cos(target.h) * target.v_max,
+                                                np.sin(target.h) * target.v_max))
             else:
                 self.target_observation.append((0, 0, 0, 0))  # Not observed but within perception range
 
-    def observe_uav(self, uav_list: List['UAV']):  # communication
+    def observe_uav_with_fixed_size(self, uav_list: List['UAV']):  # communication
         """
         communicate with other uav_s with a radius within dp
         :param uav_list: [class UAV]
@@ -110,12 +137,59 @@ class UAV:
             else:
                 self.uav_observation.append((0, 0, 0, 0, 0))  # Not observed but within perception range
 
-    def get_local_state(self) -> ([(float, float, float, float, int)],
-                                  [(float, float, float, float)], (float, float, int)):
+    def observe_uav(self, uav_list: List['UAV']):  # communication
+        """
+        communicate with other uav_s with a radius within dp
+        :param uav_list: [class UAV]
+        :return:
+        """
+        self.uav_observation = []  # Reset observed targets
+        for uav in uav_list:
+            dist = self.distance(uav)
+            if dist <= self.dc:
+                self.uav_observation.append((uav.x,
+                                             uav.y,
+                                             np.cos(uav.h) * uav.v_max,
+                                             np.sin(uav.h) * uav.v_max,
+                                             uav.a))
+
+    def get_all_local_state(self) -> ([(float, float, float, float, int)],
+                                      [(float, float, float, float)], (float, float, int)):
         """
         :return: [(x, y, vx, by, na),...] for uav, [(x, y, vx, vy)] for targets, (x, y, na) for itself
         """
         return self.uav_observation, self.target_observation, (self.x, self.y, self.a)
+
+    def get_local_state_by_mean(self) -> 'np.ndarray':
+        """
+        :return: return weighted state: ndarray: (12)
+        """
+        communication, observation, sb = self.get_all_local_state()  # ? * 5, ? * 4, 3
+
+        if communication:
+            d_communication = []
+            for x, y, vx, vy, na in communication:
+                d_communication.append(self.distance_(x, y, self.x, self.y))
+            # 对 communication 中的每个值乘上 d_communication 中的倒数
+            communication_weighted = np.array(communication) / np.array(d_communication)[:, np.newaxis]
+            average_communication = np.mean(communication_weighted, axis=1)
+        else:
+            average_communication = np.zeros(5)
+
+        if observation:
+            d_observation = []
+            for x, y, vx, vy in observation:
+                d_observation.append(self.distance_(x, y, self.x, self.y))
+            # 对 observation 中的每个值乘上 d_observation 中的倒数
+            observation_weighted = np.array(observation) / np.array(d_observation)[:, np.newaxis]
+            average_observation = np.mean(observation_weighted, axis=1)
+        else:
+            average_observation = np.zeros(4)
+
+        return np.hstack((average_communication, average_observation, np.array(sb)))
+
+    def get_local_state(self) -> 'np.ndarray':
+        return self.get_local_state_by_mean()
 
     def calculate_multi_target_tracking_reward(self) -> float:
         """

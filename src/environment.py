@@ -19,7 +19,7 @@ class Environment:
         self.y_max = y_max
 
         # dim of action space and state space
-        self.state_dim = 3  # x, y, h/theta
+        self.state_dim = 12  # 5 of communication, 4 of observation, 3 of boundary and state information
         self.action_dim = na
 
         # agents in the environments
