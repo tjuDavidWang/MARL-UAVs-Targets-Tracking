@@ -23,21 +23,24 @@ class Environment:
         self.state_dim = 12  # 5 of communication, 4 of observation, 3 of boundary and state information
         self.action_dim = na
 
-        # agents in the environments
+        # agents parameters in the environments
         self.n_uav = n_uav
         self.m_targets = m_targets
-        self.reset()
 
         # agents
         self.uav_list = []
         self.target_list = []
+        self.reset()
 
     def reset(self):
         """
         reset the location for all uav_s at (0, 0)
         :return: should be the initial states !!!!
         """
+        # the initial position of the uav is (0, 0), having randon headings
         self.uav_list = [UAV(0, 0, np.random.uniform(-np.pi, np.pi)) for _ in range(self.n_uav)]
+
+        # the initial position of the target is random, having randon headings
         self.target_list = [UAV(np.random.uniform(self.x_max),
                                 np.random.uniform(self.y_max),
                                 np.random.uniform(-np.pi, np.pi))
@@ -50,13 +53,18 @@ class Environment:
         """
         uav_states = []
         target_states = []
+
+        # collect the overall communication and target observation by each uav
         for uav in self.uav_list:
-            uav_states.append(uav.uav_observation)
-        for target in self.target_list:
-            target_states.append(target.target_observation)
+            uav_states.append(uav.uav_communication)
+            uav_states.append(uav.target_observation)
+
+        # global state of target, maybe not used
+        # for target in self.target_list:
+        #     target_states.append(target.target_observation)
         return uav_states, target_states
 
-    def step(self, actions):
+    def step(self, actions):  # TODO
         """
         state transfer functions
         :param actions: {0,1,...,Na - 1}
@@ -88,6 +96,7 @@ class Environment:
         not consider reciprocal record
         :return:
         """
+        # calculate three parts of the reward/punishment for each uav
         for uav in self.uav_list:
             reward = uav.calculate_multi_target_tracking_reward()
             boundary_punishment = uav.calculate_boundary_punishment(self.x_max, self.y_max, self.d_min)
@@ -98,5 +107,5 @@ class Environment:
         rewards = []
         for uav in self.uav_list:
             uav.reward = uav.calculate_cooperative_reward(self.uav_list)
-            rewards.append(uav.reward)
+            rewards.append(uav.reward)  # TODO
         return rewards
