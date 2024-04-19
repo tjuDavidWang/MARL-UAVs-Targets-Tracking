@@ -4,7 +4,8 @@ import numpy as np
 
 
 class Environment:
-    def __init__(self, n_uav=3, m_targets=5, x_max=2000, y_max=2000, d_min=5, na=5):
+    def __init__(self, n_uav: int = 3, m_targets: int = 5, x_max: float = 2000, y_max: float = 2000,
+                 d_min: float = 5, na: int = 5):
         """
         :param n_uav: scalar
         :param m_targets: scalar
