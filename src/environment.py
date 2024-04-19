@@ -1,5 +1,7 @@
 from uav import UAV
 import numpy as np
+from math import pi
+import random
 # from typing import List
 
 
@@ -38,37 +40,35 @@ class Environment:
         :return: should be the initial states !!!!
         """
         # the initial position of the uav is (0, 0), having randon headings
-        self.uav_list = [UAV(0, 0, np.random.uniform(-np.pi, np.pi)) for _ in range(self.n_uav)]
+        self.uav_list = [UAV(0, 0, random.uniform(-pi, pi)) for _ in range(self.n_uav)]
 
         # the initial position of the target is random, having randon headings
-        self.target_list = [UAV(np.random.uniform(self.x_max),
-                                np.random.uniform(self.y_max),
-                                np.random.uniform(-np.pi, np.pi))
+        self.target_list = [UAV(random.uniform(0, self.x_max),
+                                random.uniform(0, self.y_max),
+                                random.uniform(-pi, pi))
                             for _ in range(self.m_targets)]
 
-    def get_states(self) -> ([[(float, float, float, float, float)]], [[(float, float, float, float)]]):
+    def get_states(self) -> (['np.ndarray']):
         """
-        get the state of the uav_s and targets
-        :return: [[(x, y, vx, by, na),...]] for all uav_s, [[(x, y, vx, vy)]] for all targets
+        get the state of the uav_s
+        :return: list of np array, each element is a 1-dim array with size of 12
         """
         uav_states = []
-        target_states = []
 
         # collect the overall communication and target observation by each uav
         for uav in self.uav_list:
-            uav_states.append(uav.uav_communication)
-            uav_states.append(uav.target_observation)
+            uav_states.append(uav.get_local_state())
 
         # global state of target, maybe not used
         # for target in self.target_list:
         #     target_states.append(target.target_observation)
-        return uav_states, target_states
+        return uav_states
 
-    def step(self, actions):  # TODO
+    def step(self, actions):
         """
         state transfer functions
         :param actions: {0,1,...,Na - 1}
-        :return: states, rewards  // TODO
+        :return: states, rewards
         """
         for i, uav in enumerate(self.uav_list):
             uav.update_position(actions[i])
@@ -91,21 +91,13 @@ class Environment:
     #             else:
     #                 uav.observation[target] = -1  # Not observed but within perception range
 
-    def calculate_raw_reward(self):
-        """
-        not consider reciprocal record
-        :return:
-        """
-        # calculate three parts of the reward/punishment for each uav
+    def calculate_rewards(self) -> [float]:
+        # raw reward first
         for uav in self.uav_list:
-            reward = uav.calculate_multi_target_tracking_reward()
-            boundary_punishment = uav.calculate_boundary_punishment(self.x_max, self.y_max, self.d_min)
-            punishment = uav.calculate_duplicate_tracking_punishment(self.uav_list)
-            uav.raw_reward = reward + boundary_punishment + punishment
+            uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max, self.d_min)
 
-    def calculate_rewards(self):
         rewards = []
         for uav in self.uav_list:
             uav.reward = uav.calculate_cooperative_reward(self.uav_list)
-            rewards.append(uav.reward)  # TODO
+            rewards.append(uav.reward)
         return rewards

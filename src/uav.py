@@ -1,5 +1,5 @@
 import numpy as np
-import math
+from math import cos, sin, sqrt, exp, pi
 
 from typing import List
 
@@ -7,7 +7,7 @@ dt = 0.1
 
 
 class UAV:
-    def __init__(self, x0: float, y0: float, h0: float, v_max: float = 10, h_max: float = np.pi / 4,
+    def __init__(self, x0: float, y0: float, h0: float, v_max: float = 10, h_max: float = pi / 4,
                  na: int = 5, dc: float = 20, dp: float = 200):
         """
         :param x0: scalar
@@ -43,16 +43,16 @@ class UAV:
         self.raw_reward = 0
         self.reward = 0
 
-    def distance(self, target: 'UAV') -> float:
+    def __distance(self, target: 'UAV') -> float:
         """
         calculate the distance from uav to target
         :param target: class UAV
         :return: scalar
         """
-        return np.sqrt((self.x - target.x) ** 2 + (self.y - target.y) ** 2)
+        return sqrt((self.x - target.x) ** 2 + (self.y - target.y) ** 2)
 
     @staticmethod
-    def distance_(x1, y1, x2, y2) -> float:
+    def distance(x1, y1, x2, y2) -> float:
         """
         calculate the distance from uav to target
         :param x2:
@@ -61,32 +61,33 @@ class UAV:
         :param y2:
         :return: scalar
         """
-        return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+        return sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-    def discrete_action(self, a_idx: int) -> float:  # TODO 命名不太规范, 之后修改
+    def discrete_action(self, action: 'np.ndarray') -> float:  # 命名不太规范, 之后修改
         """
         from the action space index to the real difference
-        :param a_idx: {0,1,...,Na - 1}
+        :param action: {0,1,...,Na - 1}
         :return: action : scalar 即角度改变量
         """
         # from action space to the real world action
-        na = a_idx + 1  # 从 1 开始索引
+        na = np.argmax(action).item() + 1  # 从 1 开始索引
         return (2 * na - self.Na - 1) * self.h_max / (self.Na - 1)
 
-    def update_position(self, a_idx: int) -> (float, float, float):
+    def update_position(self, action: 'np.ndarray') -> (float, float, float):
         """
         receive the index from action space, then update the current position
-        :param a_idx: {0,1,...,Na - 1}
+        :param action: {0,1,...,Na - 1}
         :return:
         """
-        self.a = self.discrete_action(a_idx)  # TODO 有可能把这行放到其他位置
+        self.a = action
+        a = self.discrete_action(action)  # 有可能把这行放到其他位置
 
-        dx = dt * self.v_max * np.cos(self.h)  # x 方向位移
-        dy = dt * self.v_max * np.sin(self.h)  # y 方向位移
+        dx = dt * self.v_max * cos(self.h)  # x 方向位移
+        dy = dt * self.v_max * sin(self.h)  # y 方向位移
         self.x += dx
         self.y += dy
         self.h += dt * self.a  # 更新朝向角度
-        self.h = (self.h + np.pi) % (2 * np.pi) - np.pi  # 确保朝向角度在 [-pi, pi) 范围内
+        self.h = (self.h + pi) % (2 * pi) - pi  # 确保朝向角度在 [-pi, pi) 范围内
 
         return self.x, self.y, self.h  # 返回agent的位置和朝向(heading/theta)
 
@@ -98,15 +99,15 @@ class UAV:
         """
         self.target_observation = []  # Reset observed targets
         for target in targets_list:
-            dist = self.distance(target)
+            dist = self.__distance(target)
             if dist <= self.dp:
                 # add (x, y, vx, vy) information
                 self.target_observation.append((target.x,
                                                 target.y,
-                                                np.cos(target.h) * target.v_max,
-                                                np.sin(target.h) * target.v_max))
+                                                cos(target.h) * target.v_max,
+                                                sin(target.h) * target.v_max))
 
-    def observe_target_with_fixed_size(self, targets_list: List['UAV']):
+    def __observe_target_with_fixed_size(self, targets_list: List['UAV']):
         """
         Observing target with a radius within dp
         :param targets_list: [class UAV]
@@ -114,17 +115,17 @@ class UAV:
         """
         self.target_observation = []  # Reset observed targets
         for target in targets_list:
-            dist = self.distance(target)
+            dist = self.__distance(target)
             if dist <= self.dp:
                 # add (x, y, vx, vy) information
                 self.target_observation.append((target.x,
                                                 target.y,
-                                                np.cos(target.h) * target.v_max,
-                                                np.sin(target.h) * target.v_max))
+                                                cos(target.h) * target.v_max,
+                                                sin(target.h) * target.v_max))
             else:
                 self.target_observation.append((0, 0, 0, 0))  # TODO, 值不规范
 
-    def observe_uav_with_fixed_size(self, uav_list: List['UAV']):  # communication
+    def __observe_uav_with_fixed_size(self, uav_list: List['UAV']):  # communication
         """
         communicate with other uav_s with a radius within dp
         :param uav_list: [class UAV]
@@ -132,13 +133,13 @@ class UAV:
         """
         self.uav_communication = []  # Reset observed targets
         for uav in uav_list:
-            dist = self.distance(uav)
-            if dist <= self.dc:
+            dist = self.__distance(uav)
+            if dist <= self.dc and uav != self:
                 # add (x, y, vx, vy, a) information
                 self.uav_communication.append((uav.x,
                                                uav.y,
-                                               np.cos(uav.h) * uav.v_max,
-                                               np.sin(uav.h) * uav.v_max,
+                                               cos(uav.h) * uav.v_max,
+                                               sin(uav.h) * uav.v_max,
                                                uav.a))
             else:
                 self.uav_communication.append((0, 0, 0, 0, 0))  # TODO, 值不规范
@@ -151,32 +152,32 @@ class UAV:
         """
         self.uav_communication = []  # Reset observed targets
         for uav in uav_list:
-            dist = self.distance(uav)
-            if dist <= self.dc:
+            dist = self.__distance(uav)
+            if dist <= self.dc and uav != self:
                 # add (x, y, vx, vy) information
                 self.uav_communication.append((uav.x,
                                                uav.y,
-                                               np.cos(uav.h) * uav.v_max,
-                                               np.sin(uav.h) * uav.v_max,
+                                               cos(uav.h) * uav.v_max,
+                                               sin(uav.h) * uav.v_max,
                                                uav.a))
 
-    def get_all_local_state(self) -> ([(float, float, float, float, int)],
-                                      [(float, float, float, float)], (float, float, int)):
+    def __get_all_local_state(self) -> ([(float, float, float, float, int)],
+                                        [(float, float, float, float)], (float, float, int)):
         """
         :return: [(x, y, vx, by, na),...] for uav, [(x, y, vx, vy)] for targets, (x, y, na) for itself
         """
         return self.uav_communication, self.target_observation, (self.x, self.y, self.a)
 
-    def get_local_state_by_weighted_mean(self) -> 'np.ndarray':
+    def __get_local_state_by_weighted_mean(self) -> 'np.ndarray':
         """
         :return: return weighted state: ndarray: (12)
         """
-        communication, observation, sb = self.get_all_local_state()  # ? * 5, ? * 4, 3
+        communication, observation, sb = self.__get_all_local_state()  # ? * 5, ? * 4, 3
 
         if communication:
             d_communication = []  # store the distance from each uav to itself
             for x, y, vx, vy, na in communication:
-                d_communication.append(self.distance_(x, y, self.x, self.y))
+                d_communication.append(self.distance(x, y, self.x, self.y))
 
             # regularization by the distance
             communication_weighted = np.array(communication) / np.array(d_communication)[:, np.newaxis]  # TODO 没有减去自身坐标
@@ -187,7 +188,7 @@ class UAV:
         if observation:
             d_observation = []  # store the distance from each target to itself
             for x, y, vx, vy in observation:
-                d_observation.append(self.distance_(x, y, self.x, self.y))
+                d_observation.append(self.distance(x, y, self.x, self.y))
 
             # regularization by the distance
             observation_weighted = np.array(observation) / np.array(d_observation)[:, np.newaxis]  # TODO 没有减去自身坐标
@@ -202,20 +203,20 @@ class UAV:
         :return: np.ndarray
         """
         # using weighted mean method:    dim:    (? * 5, ? * 4, 3) -> 12
-        return self.get_local_state_by_weighted_mean()
+        return self.__get_local_state_by_weighted_mean()
 
-    def calculate_multi_target_tracking_reward(self) -> float:
+    def __calculate_multi_target_tracking_reward(self) -> float:
         """
         calculate multi target tracking reward
         :return: scalar
         """
         track_reward = 0
-        for target, distance in self.target_observation:
-            if distance <= self.dp:
-                track_reward += 1 + (self.dp - distance) / self.dp
+        for x, y, _, _ in self.target_observation:
+            distance = self.distance(x, y, self.x, self.y)
+            track_reward += 1 + (self.dp - distance) / self.dp
         return track_reward
 
-    def calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=2) -> float:
+    def __calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=2) -> float:
         """
         calculate duplicate tracking punishment
         :param uav_list: [class UAV]
@@ -225,13 +226,13 @@ class UAV:
         total_punishment = 0
         for other_uav in uav_list:
             if other_uav != self:
-                distance = self.distance(other_uav)
+                distance = self.__distance(other_uav)
                 if distance <= radio * self.dp:
-                    punishment = -0.5 * math.exp((radio * self.dp - distance) / (radio * self.dp))
+                    punishment = -0.5 * exp((radio * self.dp - distance) / (radio * self.dp))
                     total_punishment += punishment
         return total_punishment
 
-    def calculate_boundary_punishment(self, x_max: float, y_max: float, d_min: float) -> float:
+    def __calculate_boundary_punishment(self, x_max: float, y_max: float, d_min: float) -> float:
         """
         :param x_max: border of the map at x-axis, scalar
         :param y_max: border of the map at y-axis, scalar
@@ -243,8 +244,21 @@ class UAV:
         else:
             boundary_punishment = 0
         return boundary_punishment
-    
-    def calculate_cooperative_reward(self, uav_list: List['UAV'], a=0.5):
+
+    def calculate_raw_reward(self, uav_list: List['UAV'], x_max, y_max, d_min):
+        """
+        calculate three parts of the reward/punishment for each uav
+        :return:
+        """
+        self.raw_reward = 0
+        for uav in uav_list:
+            if uav != self:
+                reward = uav.__calculate_multi_target_tracking_reward()
+                boundary_punishment = uav.__calculate_boundary_punishment(x_max, y_max, d_min)
+                punishment = uav.__calculate_duplicate_tracking_punishment(uav_list)
+                self.raw_reward += reward + boundary_punishment + punishment
+
+    def calculate_cooperative_reward(self, uav_list: List['UAV'], a=0.5) -> float:
         """
         calculate cooperative reward
         :param uav_list: [class UAV]
@@ -253,7 +267,8 @@ class UAV:
         """
         neighbor_rewards = []
         for other_uav in uav_list:
-            if other_uav != self and self.distance(other_uav) <= self.dp:
+            if other_uav != self and self.__distance(other_uav) <= self.dp:
                 neighbor_rewards.append(other_uav.raw_reward)
         # TODO 没有加入PMI网络
         self.reward = (1 - a) * self.raw_reward + a * sum(neighbor_rewards) / len(neighbor_rewards)
+        return self.reward
