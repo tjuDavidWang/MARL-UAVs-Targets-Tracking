@@ -56,12 +56,11 @@ class ActorCritic:
                                dtype=torch.float).view(-1, 1).to(self.device)
         next_states = torch.tensor(transition_dict['next_states'],
                                    dtype=torch.float).to(self.device)
-        dones = torch.tensor(transition_dict['dones'],
-                             dtype=torch.float).view(-1, 1).to(self.device)
+        # dones = torch.tensor(transition_dict['dones'],
+        #                      dtype=torch.float).view(-1, 1).to(self.device)
 
         # 时序差分目标
-        td_target = rewards + self.gamma * self.critic(next_states) * (1 -
-                                                                       dones)
+        td_target = rewards + self.gamma * self.critic(next_states)
         td_delta = td_target - self.critic(states)  # 时序差分误差
         log_probs = torch.log(self.actor(states).gather(1, actions))
         actor_loss = torch.mean(-log_probs * td_delta.detach())
@@ -79,8 +78,8 @@ class ActorCritic:
 if __name__ == "__main__":
     actor_lr = 1e-3
     critic_lr = 1e-2
-    num_episodes = 1000
-    num_steps = 10000
+    num_episodes = 1
+    num_steps = 1
     hidden_dim = 128
     gamma = 0.98
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device(

@@ -44,27 +44,28 @@ def train_on_policy_agent(env, agent, num_episodes, num_steps):
             # initial environment
             env.reset()
             episode_return = 0
-            transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': [], 'dones': []}
+            transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': []}
             # episode start
             for _ in range(num_steps):
                 action_list = []
                 # each uav makes choices first
                 for uav in env.uav_list:
-                    state = uav.get_local_state()  # size: 12
-                    action = agent.take_action(state).cpu().numpy()  # size: 5
+                    state = uav.get_local_state()
+                    action = agent.take_action(state).item()  # size: 1
                     transition_dict['states'].append(state)
-                    action_list.extend(action)
+                    # action_list.extend(action)
+                    action_list.append(action)
 
                 # use action_list to update the environment
-                next_state_list, reward_list = env.step(action_list)  # TODO action还没有从标量改为 Na维向量
+                next_state_list, reward_list = env.step(action_list)  # action: List[int]
                 transition_dict['actions'].extend(action_list)
                 transition_dict['next_states'].extend(next_state_list)
                 transition_dict['rewards'].extend(reward_list)
 
                 # update return
                 episode_return += sum(reward_list)
-                return_list.append(episode_return)
-                agent.update(transition_dict)
+            return_list.append(episode_return)
+            agent.update(transition_dict)
 
             if (i+1) % 10 == 0:
                 pbar.set_postfix({'episode': '%d' % (num_episodes * i + 1),

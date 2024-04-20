@@ -2,7 +2,7 @@ from uav import UAV
 import numpy as np
 from math import pi
 import random
-# from typing import List
+from typing import List
 
 
 class Environment:
@@ -22,7 +22,9 @@ class Environment:
         self.y_max = y_max
 
         # dim of action space and state space
-        self.state_dim = 12  # 5 of communication, 4 of observation, 3 of boundary and state information
+        # communication(4 scalar, a), observation(4 scalar), boundary and state information(2 scalar, a)
+        # self.state_dim = (4 + na) + 4 + (2 + na)
+        self.state_dim = (4 + 1) + 4 + (2 + 1)
         self.action_dim = na
 
         # agents parameters in the environments
@@ -40,15 +42,17 @@ class Environment:
         :return: should be the initial states !!!!
         """
         # the initial position of the uav is (0, 0), having randon headings
-        self.uav_list = [UAV(0, 0, random.uniform(-pi, pi)) for _ in range(self.n_uav)]
+        self.uav_list = [UAV(0, 0, random.uniform(-pi, pi),
+                             random.randint(0, self.action_dim - 1)) for _ in range(self.n_uav)]
 
         # the initial position of the target is random, having randon headings
         self.target_list = [UAV(random.uniform(0, self.x_max),
                                 random.uniform(0, self.y_max),
-                                random.uniform(-pi, pi))
+                                random.uniform(-pi, pi),
+                                random.randint(0, self.action_dim - 1))  # TODO, 目标可以连续移动
                             for _ in range(self.m_targets)]
 
-    def get_states(self) -> (['np.ndarray']):
+    def get_states(self) -> (List['np.ndarray']):
         """
         get the state of the uav_s
         :return: list of np array, each element is a 1-dim array with size of 12
