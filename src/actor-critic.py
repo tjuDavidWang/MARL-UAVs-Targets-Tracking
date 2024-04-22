@@ -78,8 +78,8 @@ class ActorCritic:
 if __name__ == "__main__":
     actor_lr = 1e-3
     critic_lr = 1e-2
-    num_episodes = 1
-    num_steps = 1
+    num_episodes = 100
+    num_steps = 1000
     hidden_dim = 128
     gamma = 0.98
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device(

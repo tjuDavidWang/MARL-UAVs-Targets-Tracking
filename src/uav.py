@@ -4,10 +4,9 @@ from typing import List, Tuple
 
 dt = 0.1
 
-
 class UAV:
     def __init__(self, x0: float, y0: float, h0: float, a_idx: int,
-                 v_max: float = 10, h_max: float = pi / 4, na: int = 5, dc: float = 20, dp: float = 200):
+                 v_max: float = 20, h_max: float = pi / 6, na: int = 5, dc: float = 500, dp: float = 200):
         """
         :param x0: scalar
         :param y0: scalar

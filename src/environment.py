@@ -1,4 +1,5 @@
 from uav import UAV
+from target import TARGET
 import numpy as np
 from math import pi
 import random
@@ -46,10 +47,15 @@ class Environment:
                              random.randint(0, self.action_dim - 1)) for _ in range(self.n_uav)]
 
         # the initial position of the target is random, having randon headings
-        self.target_list = [UAV(random.uniform(0, self.x_max),
-                                random.uniform(0, self.y_max),
-                                random.uniform(-pi, pi),
-                                random.randint(0, self.action_dim - 1))  # TODO, 目标可以连续移动
+        # self.target_list = [UAV(random.uniform(0, self.x_max),
+        #                         random.uniform(0, self.y_max),
+        #                         random.uniform(-pi, pi),
+        #                         random.randint(0, self.action_dim - 1))  # TODO, 目标可以连续移动
+        #                     for _ in range(self.m_targets)]
+        self.target_list = [TARGET(random.uniform(0, self.x_max),
+                                   random.uniform(0, self.y_max),
+                                   random.uniform(-pi, pi),
+                                   random.uniform(-pi/6, pi/6))  # TODO, 目标可以连续移动
                             for _ in range(self.m_targets)]
 
     def get_states(self) -> (List['np.ndarray']):
@@ -74,6 +80,9 @@ class Environment:
         :param actions: {0,1,...,Na - 1}
         :return: states, rewards
         """
+        for i, target in enumerate(self.target_list):
+            target.update_position()
+
         for i, uav in enumerate(self.uav_list):
             uav.update_position(actions[i])
             uav.observe_target(self.target_list)
