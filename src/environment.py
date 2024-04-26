@@ -8,7 +8,7 @@ from typing import List
 
 class Environment:
     def __init__(self, n_uav: int = 3, m_targets: int = 5, x_max: float = 2000, y_max: float = 2000,
-                 d_min: float = 5, na: int = 5):
+                 d_min: float = 50, na: int = 5):
         """
         :param n_uav: scalar
         :param m_targets: scalar
@@ -37,14 +37,20 @@ class Environment:
         self.target_list = []
         self.reset()
 
+        # position of uav and target
+        self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
+
     def reset(self):
         """
-        reset the location for all uav_s at (0, 0)
+        reset the location for all uav_s at (self.d_min, self.d_min)
         :return: should be the initial states !!!!
         """
-        # the initial position of the uav is (0, 0), having randon headings
-        self.uav_list = [UAV(0, 0, random.uniform(-pi, pi),
+        # the initial position of the uav is (self.d_min, self.d_min), having randon headings
+        self.uav_list = [UAV(self.d_min, self.d_min, random.uniform(-pi, pi),
                              random.randint(0, self.action_dim - 1)) for _ in range(self.n_uav)]
+        # the initial position of the uav is (self.d_min, self.d_min), having randon headings
+        # self.uav_list = [UAV(0, 0, random.uniform(-pi, pi),
+        #                      random.randint(0, self.action_dim - 1)) for _ in range(self.n_uav)]
 
         # the initial position of the target is random, having randon headings
         # self.target_list = [UAV(random.uniform(0, self.x_max),
@@ -57,6 +63,7 @@ class Environment:
                                    random.uniform(-pi, pi),
                                    random.uniform(-pi/6, pi/6))  # TODO, 目标可以连续移动
                             for _ in range(self.m_targets)]
+        self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
 
     def get_states(self) -> (List['np.ndarray']):
         """
@@ -90,9 +97,36 @@ class Environment:
 
         rewards = self.calculate_rewards()
         next_states = self.get_states()
-        # done = self.check_done()
-        # tem = []
+
+        # trace the position matrix
+        target_xs, target_ys = self.__get_all_target_position()
+        self.position['all_target_xs'].append(target_xs)
+        self.position['all_target_ys'].append(target_ys)
+        uav_xs, uav_ys = self.__get_all_uav_position()
+        self.position['all_uav_xs'].append(uav_xs)
+        self.position['all_uav_ys'].append(uav_ys)
+
         return next_states, rewards
+
+    def __get_all_uav_position(self) -> (List[float], List[float]):
+        uav_xs = []
+        uav_ys = []
+        for uav in self.uav_list:
+            uav_xs.append(uav.x)
+            uav_ys.append(uav.y)
+        return uav_xs, uav_ys
+
+    def __get_all_target_position(self) -> (List[float], List[float]):
+        target_xs = []
+        target_ys = []
+        for target in self.target_list:
+            target_xs.append(target.x)
+            target_ys.append(target.y)
+        return target_xs, target_ys
+
+    def get_uav_and_target_position(self) -> (List[float], List[float], List[float], List[float]):
+        return (self.position['all_uav_xs'], self.position['all_uav_ys'],
+                self.position['all_target_xs'], self.position['all_target_ys'])
 
     # def observe_target(self, targets_list):
     #     for uav in self.uav_s:

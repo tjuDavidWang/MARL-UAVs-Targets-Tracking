@@ -31,8 +31,9 @@ def moving_average(a, window_size):
     return np.concatenate((begin, middle, end))
 
 
-def train_on_policy_agent(env, agent, num_episodes, num_steps):
+def train_on_policy_agent(env, agent, num_episodes, num_steps, frequency=10):
     """
+    :param frequency: 打印消息的频率
     :param num_steps: 每局进行的步数
     :param env:
     :param agent: # TODO 因为所有的无人机共享权重训练, 所以共用一个agent
@@ -40,40 +41,23 @@ def train_on_policy_agent(env, agent, num_episodes, num_steps):
     :return:
     """
     return_list = []
-    for i in range(num_episodes):
-        with tqdm(total=num_episodes, desc='Iteration %d' % i) as pbar:
+    with tqdm(total=num_episodes, desc='Episodes') as pbar:
+        for i in range(num_episodes):
             # initial environment
             env.reset()
             episode_return = 0
             transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': []}
 
-            all_uav_xs = []
-            all_uav_ys = []
-            all_target_xs = []
-            all_target_ys = []
-
             # episode start
             for _ in range(num_steps):
                 action_list = []
-                # 存储无人机飞行轨迹的数组
-
-                uav_xs = []
-                uav_ys = []
 
                 # each uav makes choices first
                 for uav in env.uav_list:
                     state = uav.get_local_state()
                     action = agent.take_action(state).item()  # size: 1
                     transition_dict['states'].append(state)
-                    # action_list.extend(action)
                     action_list.append(action)
-                    # 收集xy坐标信息，便于作图
-
-                    uav_xs.append(uav.x)
-                    uav_ys.append(uav.y)
-
-                all_uav_xs.append(uav_xs)
-                all_uav_ys.append(uav_ys)
 
                 # use action_list to update the environment
                 next_state_list, reward_list = env.step(action_list)  # action: List[int]
@@ -81,32 +65,17 @@ def train_on_policy_agent(env, agent, num_episodes, num_steps):
                 transition_dict['next_states'].extend(next_state_list)
                 transition_dict['rewards'].extend(reward_list)
 
-                # 存储目标飞行轨迹的数组
-                target_xs = []
-                target_ys = []
-                for target in env.target_list:
-                    # 收集xy坐标信息，便于作图
-                    target_xs.append(target.x)
-                    target_ys.append(target.y)
-
-                all_target_xs.append(target_xs)
-                all_target_ys.append(target_ys)
-
                 # update return
                 episode_return += sum(reward_list)
+
             return_list.append(episode_return)
             agent.update(transition_dict)
 
-            if (i+1) % 10 == 0:
-                pbar.set_postfix({'episode': '%d' % (num_episodes * i + 1),
-                                  'return': '%.3f' % np.mean(return_list[-10:])})
-                # 绘制二维图
-                uav = env.uav_list[0]
-                draw_picture.draw(all_uav_xs, all_uav_ys, all_target_xs, all_target_ys,
-                                  num_steps, env.n_uav, env.m_targets, uav.dp, i)
+            if (i + 1) % frequency == 0:
+                pbar.set_postfix({'episode': '%d' % (i + 1),
+                                  'return': '%.3f' % np.mean(return_list[-frequency:])})
+                draw_picture.draw_animation(env, num_steps=num_steps, ep_num=i)
             pbar.update(1)
-
-
 
     return return_list
 

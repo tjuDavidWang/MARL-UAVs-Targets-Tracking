@@ -1,5 +1,8 @@
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import matplotlib.patches as patches
+
 
 def draw(uav_xs, uav_ys, target_xs, target_ys, num_steps, n_uav, m_target, dp, ep_num):
     fig, ax = plt.subplots()
@@ -30,3 +33,44 @@ def draw(uav_xs, uav_ys, target_xs, target_ys, num_steps, n_uav, m_target, dp, e
     ax.set_title('episode %d' % ep_num)
     plt.show()
 
+
+def update(frame, env, uav_plots, target_plots, uav_search_patches):
+    for i, uav in enumerate(env.uav_list):
+        uav_x = env.position['all_uav_xs'][frame][i]
+        uav_y = env.position['all_uav_ys'][frame][i]
+        uav_plots[i].set_data(uav_x, uav_y)
+        # 更新搜索范围扇形的位置和角度
+        uav_search_patches[i].center = (uav_x, uav_y)
+        uav_search_patches[i].set_theta1(np.degrees(uav.h - uav.h_max))
+        uav_search_patches[i].set_theta2(np.degrees(uav.h + uav.h_max))
+
+    for i in range(env.m_targets):
+        target_x = env.position['all_target_xs'][frame][i]
+        target_y = env.position['all_target_ys'][frame][i]
+        target_plots[i].set_data(target_x, target_y)
+
+    return target_plots + uav_plots + uav_search_patches
+
+
+def draw_animation(env, num_steps, ep_num):
+    fig, ax = plt.subplots()
+    ax.set_xlim(0, env.x_max)
+    ax.set_ylim(0, env.y_max)
+    uav_plots = [ax.plot([], [], marker='o', linestyle='None')[0] for _ in range(env.n_uav)]
+    target_plots = [ax.plot([], [], marker='o', linestyle='None')[0] for _ in range(env.m_targets)]
+
+    uav_search_patches = [patches.Wedge((uav.x, uav.y),
+                                        uav.dp,
+                                        np.degrees(uav.h - uav.h_max),
+                                        np.degrees(uav.h + uav.h_max),
+                                        color='blue', alpha=0.2) for uav in env.uav_list]
+
+    for patch in uav_search_patches:
+        ax.add_patch(patch)
+
+    ani = animation.FuncAnimation(fig, update, frames=num_steps,
+                                  fargs=(env, uav_plots, target_plots, uav_search_patches),
+                                  blit=True, interval=50, repeat=True)
+    # 保存动画为gif格式
+    ani.save('results/' + 'animated_plot_' + str(ep_num) + '.gif', writer='imagemagick')
+    # plt.show()
