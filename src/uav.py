@@ -19,8 +19,8 @@ class UAV:
         :param dp: scalar
         """
         # the position, velocity and heading of this uav
-        self.x = x0
-        self.y = y0
+        self.x = dp
+        self.y = dp
         self.h = h0
         self.v_max = v_max
 
@@ -298,10 +298,18 @@ class UAV:
         :param d_min: minimum distance to the border, scalar
         :return:
         """
-        if self.x < d_min or self.x > (x_max - d_min) or self.y < d_min or self.y > (y_max - d_min):
-            boundary_punishment = -0.5 * (self.dp - d_min) / self.dp
+        x_to_0 = self.x-0
+        x_to_max = x_max-self.x
+        y_to_0 = self.x - 0
+        y_to_max = y_max - self.y
+        d_bdr = min(x_to_0, x_to_max, y_to_0, y_to_max)
+        if 0 <= self.x <= x_max and 0 <= self.y <= y_max:
+            if d_bdr < self.dp:
+                boundary_punishment = -0.5 * (self.dp - d_min) / self.dp
+            else:
+                boundary_punishment = 0
         else:
-            boundary_punishment = 0
+            boundary_punishment = 10 * d_bdr / self.dp
         return boundary_punishment
 
     def calculate_raw_reward(self, uav_list: List['UAV'], x_max, y_max, d_min):
