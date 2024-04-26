@@ -31,7 +31,7 @@ def moving_average(a, window_size):
     return np.concatenate((begin, middle, end))
 
 
-def train_on_policy_agent(env, agent, num_episodes, num_steps, frequency=10):
+def train_on_policy_agent(env, agent, num_episodes, num_steps, frequency=50):
     """
     :param frequency: 打印消息的频率
     :param num_steps: 每局进行的步数
