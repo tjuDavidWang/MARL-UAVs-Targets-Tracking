@@ -34,15 +34,15 @@ def draw(uav_xs, uav_ys, target_xs, target_ys, num_steps, n_uav, m_target, dp, e
     plt.show()
 
 
-def update(frame, env, uav_plots, target_plots, uav_search_patches):
+def update(frame, env, uav_plots, target_plots, uav_search_patches, steps):
     for i, uav in enumerate(env.uav_list):
-        uav_x = env.position['all_uav_xs'][frame][i]
+        uav_x = env.position['all_uav_xs'][frame * steps][i]
         uav_y = env.position['all_uav_ys'][frame][i]
         uav_plots[i].set_data(uav_x, uav_y)
         # 更新搜索范围扇形的位置和角度
         uav_search_patches[i].center = (uav_x, uav_y)
-        uav_search_patches[i].set_theta1(np.degrees(uav.h - uav.h_max))
-        uav_search_patches[i].set_theta2(np.degrees(uav.h + uav.h_max))
+        # uav_search_patches[i].set_theta1(np.degrees(uav.h - uav.h_max))
+        # uav_search_patches[i].set_theta2(np.degrees(uav.h + uav.h_max))
 
     for i in range(env.m_targets):
         target_x = env.position['all_target_xs'][frame][i]
@@ -52,25 +52,35 @@ def update(frame, env, uav_plots, target_plots, uav_search_patches):
     return target_plots + uav_plots + uav_search_patches
 
 
-def draw_animation(env, num_steps, ep_num):
+def draw_animation(env, num_steps, ep_num, frames=100):  # num_steps % frames must be 0
+    if num_steps % frames != 0:
+        print("num_steps % frames must be 0!")
+        return
+
     fig, ax = plt.subplots()
-    ax.set_xlim(0, env.x_max)
-    ax.set_ylim(0, env.y_max)
+    ax.set_xlim(-env.x_max / 3, env.x_max / 3 * 4)
+    ax.set_ylim(-env.y_max / 3, env.y_max / 3 * 4)
     uav_plots = [ax.plot([], [], marker='o', linestyle='None')[0] for _ in range(env.n_uav)]
     target_plots = [ax.plot([], [], marker='o', linestyle='None')[0] for _ in range(env.m_targets)]
 
-    uav_search_patches = [patches.Wedge((uav.x, uav.y),
-                                        uav.dp,
-                                        np.degrees(uav.h - uav.h_max),
-                                        np.degrees(uav.h + uav.h_max),
-                                        color='blue', alpha=0.2) for uav in env.uav_list]
+    uav_search_patches = [patches.Circle((uav.x, uav.y), uav.dp, color='blue', alpha=0.2) for uav in env.uav_list]
 
     for patch in uav_search_patches:
         ax.add_patch(patch)
 
-    ani = animation.FuncAnimation(fig, update, frames=num_steps,
-                                  fargs=(env, uav_plots, target_plots, uav_search_patches),
+    ani = animation.FuncAnimation(fig, update, frames=frames,
+                                  fargs=(env, uav_plots, target_plots, uav_search_patches, num_steps // frames),
                                   blit=True, interval=50, repeat=True)
     # 保存动画为gif格式
-    ani.save('results/' + 'animated_plot_' + str(ep_num) + '.gif', writer='imagemagick')
+    ani.save('../results/' + 'animated_plot_' + str(ep_num + 1) + '.gif', writer='imagemagick')
     # plt.show()
+
+
+def plot_reward_curve(return_list):
+    plt.plot(return_list)
+    plt.xlabel('Episodes')
+    plt.ylabel('Total Return')
+    plt.title('Reward Curve')
+    plt.grid(True)
+    plt.savefig("../result/result-curve" + ".png")
+    plt.show()
