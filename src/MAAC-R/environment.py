@@ -8,17 +8,16 @@ from typing import List
 
 class Environment:
     def __init__(self, n_uav: int = 3, m_targets: int = 5, x_max: float = 2000, y_max: float = 2000,
-                 d_min: float = 50, na: int = 5):
+                 na: int = 5):
         """
         :param n_uav: scalar
         :param m_targets: scalar
         :param x_max: scalar
         :param y_max: scalar
-        :param d_min: scalar
         :param na: scalar
         """
         # size of the environment
-        self.d_min = d_min
+        # self.d_min = d_min
         self.x_max = x_max
         self.y_max = y_max
 
@@ -46,7 +45,7 @@ class Environment:
         :return: should be the initial states !!!!
         """
         # the initial position of the uav is (self.d_min, self.d_min), having randon headings
-        self.uav_list = [UAV(self.d_min, self.d_min, random.uniform(-pi, pi),
+        self.uav_list = [UAV(200, 200, random.uniform(-pi, pi),
                              random.randint(0, self.action_dim - 1)) for _ in range(self.n_uav)]
         # the initial position of the uav is (self.d_min, self.d_min), having randon headings
         # self.uav_list = [UAV(0, 0, random.uniform(-pi, pi),
@@ -61,7 +60,9 @@ class Environment:
         self.target_list = [TARGET(random.uniform(0, self.x_max),
                                    random.uniform(0, self.y_max),
                                    random.uniform(-pi, pi),
-                                   random.uniform(-pi/6, pi/6))  # TODO, 目标可以连续移动
+                                   random.uniform(-pi/6, pi/6),
+                                   self.x_max,
+                                   self.y_max)
                             for _ in range(self.m_targets)]
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
 
@@ -81,7 +82,7 @@ class Environment:
         #     target_states.append(target.target_observation)
         return uav_states
 
-    def step(self, actions):
+    def step(self, pmi, actions):
         """
         state transfer functions
         :param actions: {0,1,...,Na - 1}
@@ -95,7 +96,7 @@ class Environment:
             uav.observe_target(self.target_list)
             uav.observe_uav(self.uav_list)
 
-        rewards = self.calculate_rewards()
+        rewards = self.calculate_rewards(pmi)
         next_states = self.get_states()
 
         # trace the position matrix
@@ -138,13 +139,13 @@ class Environment:
     #             else:
     #                 uav.observation[target] = -1  # Not observed but within perception range
 
-    def calculate_rewards(self) -> [float]:
+    def calculate_rewards(self, pmi) -> [float]:
         # raw reward first
         for uav in self.uav_list:
-            uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max, self.d_min)
+            uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max)
 
         rewards = []
         for uav in self.uav_list:
-            uav.reward = uav.calculate_cooperative_reward(self.uav_list)
+            uav.reward = uav.calculate_cooperative_reward(pmi, self.uav_list)
             rewards.append(uav.reward)
         return rewards

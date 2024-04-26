@@ -37,7 +37,7 @@ def draw(uav_xs, uav_ys, target_xs, target_ys, num_steps, n_uav, m_target, dp, e
 def update(frame, env, uav_plots, target_plots, uav_search_patches, steps):
     for i, uav in enumerate(env.uav_list):
         uav_x = env.position['all_uav_xs'][frame * steps][i]
-        uav_y = env.position['all_uav_ys'][frame][i]
+        uav_y = env.position['all_uav_ys'][frame * steps][i]
         uav_plots[i].set_data(uav_x, uav_y)
         # 更新搜索范围扇形的位置和角度
         uav_search_patches[i].center = (uav_x, uav_y)
@@ -45,8 +45,8 @@ def update(frame, env, uav_plots, target_plots, uav_search_patches, steps):
         # uav_search_patches[i].set_theta2(np.degrees(uav.h + uav.h_max))
 
     for i in range(env.m_targets):
-        target_x = env.position['all_target_xs'][frame][i]
-        target_y = env.position['all_target_ys'][frame][i]
+        target_x = env.position['all_target_xs'][frame * steps][i]
+        target_y = env.position['all_target_ys'][frame * steps][i]
         target_plots[i].set_data(target_x, target_y)
 
     return target_plots + uav_plots + uav_search_patches
@@ -72,15 +72,16 @@ def draw_animation(env, num_steps, ep_num, frames=100):  # num_steps % frames mu
                                   fargs=(env, uav_plots, target_plots, uav_search_patches, num_steps // frames),
                                   blit=True, interval=50, repeat=True)
     # 保存动画为gif格式
-    ani.save('../results/' + 'animated_plot_' + str(ep_num + 1) + '.gif', writer='imagemagick')
+    ani.save('../../results/' + 'animated_plot_' + str(ep_num + 1) + '.gif', writer='imagemagick')
     # plt.show()
 
 
 def plot_reward_curve(return_list):
+    plt.figure()
     plt.plot(return_list)
     plt.xlabel('Episodes')
     plt.ylabel('Total Return')
     plt.title('Reward Curve')
     plt.grid(True)
-    plt.savefig("../result/result-curve" + ".png")
+    plt.savefig("../../results/result-curve" + ".png")
     plt.show()

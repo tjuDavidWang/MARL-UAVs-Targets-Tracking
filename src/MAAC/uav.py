@@ -305,7 +305,7 @@ class UAV:
         d_bdr = min(x_to_0, x_to_max, y_to_0, y_to_max)
         if 0 <= self.x <= x_max and 0 <= self.y <= y_max:
             if d_bdr < self.dp:
-                boundary_punishment = -0.5 * (self.dp - d_min) / self.dp
+                boundary_punishment = -0.5 * (self.dp - d_bdr) / self.dp
             else:
                 boundary_punishment = 0
         else:

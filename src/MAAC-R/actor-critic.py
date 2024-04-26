@@ -2,6 +2,8 @@ import torch
 import torch.nn.functional as F
 import rl_utils
 from environment import Environment
+from toolkits import plot_reward_curve
+from PMINet import PMINetwork
 
 
 class PolicyNet(torch.nn.Module):
@@ -78,8 +80,9 @@ class ActorCritic:
 if __name__ == "__main__":
     actor_lr = 1e-3
     critic_lr = 1e-2
-    num_episodes = 100
+    num_episodes = 1000
     num_steps = 1000
+    frequency = 100
     hidden_dim = 128
     gamma = 0.98
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
@@ -91,7 +94,9 @@ if __name__ == "__main__":
     action_dim = env.action_dim
     agent = ActorCritic(state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
                         gamma, device)
-    return_list = rl_utils.train_on_policy_agent(env, agent, num_episodes, num_steps)
+    pmi = PMINetwork(hidden_dim=64)
+    return_list = rl_utils.train_on_policy_agent(env, agent, pmi, num_episodes, num_steps, frequency)
+    plot_reward_curve(return_list)
 
     # env_name = 'CartPole-v0'
     # env = gym.make(env_name)

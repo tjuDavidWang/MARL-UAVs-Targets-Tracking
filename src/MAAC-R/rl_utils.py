@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import collections
 import random
-import draw_picture
+import toolkits
 
 
 class ReplayBuffer:
@@ -31,8 +31,9 @@ def moving_average(a, window_size):
     return np.concatenate((begin, middle, end))
 
 
-def train_on_policy_agent(env, agent, num_episodes, num_steps, frequency=50):
+def train_on_policy_agent(env, agent, pmi, num_episodes, num_steps, frequency=50):
     """
+    :param pmi: pmi network
     :param frequency: 打印消息的频率
     :param num_steps: 每局进行的步数
     :param env:
@@ -60,7 +61,7 @@ def train_on_policy_agent(env, agent, num_episodes, num_steps, frequency=50):
                     action_list.append(action)
 
                 # use action_list to update the environment
-                next_state_list, reward_list = env.step(action_list)  # action: List[int]
+                next_state_list, reward_list = env.step(pmi, action_list)  # action: List[int]
                 transition_dict['actions'].extend(action_list)
                 transition_dict['next_states'].extend(next_state_list)
                 transition_dict['rewards'].extend(reward_list)
