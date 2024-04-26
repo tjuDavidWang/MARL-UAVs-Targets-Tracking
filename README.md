@@ -1,6 +1,8 @@
 # MARL-UAVs-Targets-Tracking
 The implement and improvement of the paper “Improving multi-target cooperative tracking guidance for UAV swarms using multi-agent reinforcement learning”.
 
+![](https://github.com/tjuDavidWang/MARL-UAVs-Targets-Tracking/blob/main/imgs/2d-demo.png)
+
 ### Environment
 
 You can simply use pip install to config the environment:
@@ -18,7 +20,10 @@ python actor-critic.py
 
 ### ToDo List
 
-- [x] Actor-Critic framework
-- [x] 2D demo
-- [ ] reciprocal reward (with PMI network)
+- [x] vanilla MAAC
+  - [x] Actor-Critic framework
+- [ ] MAAC-R
+  - [ ] reciprocal reward (with PMI network)
+- [ ] MAAC-G
+  - [ ] receive the global reward
 - [ ] 3D demo
