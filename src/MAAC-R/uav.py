@@ -324,6 +324,7 @@ class UAV:
                 boundary_punishment = uav.__calculate_boundary_punishment(x_max, y_max)
                 punishment = uav.__calculate_duplicate_tracking_punishment(uav_list)
                 self.raw_reward += reward + boundary_punishment + punishment
+        return reward, boundary_punishment, punishment
 
     def calculate_cooperative_reward(self, pmi_net: 'PMINetwork', uav_list: List['UAV'], a=0.5) -> float:
         """

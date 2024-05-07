@@ -5,6 +5,8 @@ import rl_utils
 from environment import Environment
 from toolkits import plot_reward_curve
 from PMINet import PMINetwork
+import numpy as np
+import csv
 
 
 class ResidualBlock(nn.Module):
@@ -98,26 +100,28 @@ class ActorCritic:
         self.device = device
 
     def take_action(self, states):
-        states = torch.tensor([states], dtype=torch.float).to(self.device)
-        probs = self.actor(states)
+        states_np = np.array(states)[np.newaxis, :]  # 直接使用np.array来转换
+        states_tensor = torch.tensor(states_np, dtype=torch.float).to(self.device)
+        probs = self.actor(states_tensor)
         action_dist = torch.distributions.Categorical(probs)
         action = action_dist.sample()
         return action
 
     def update(self, transition_dict):
-        states = torch.tensor(transition_dict['states'],
+        states = torch.tensor(np.array(transition_dict['states']),
                               dtype=torch.float).to(self.device)
         actions = torch.tensor(transition_dict['actions']).view(-1, 1).to(
             self.device)
         rewards = torch.tensor(transition_dict['rewards'],
-                               dtype=torch.float).view(-1, 1).to(self.device)
-        next_states = torch.tensor(transition_dict['next_states'],
+                               dtype=torch.float).view(-1, 1).to(self.device).squeeze()
+        next_states = torch.tensor(np.array(transition_dict['next_states']),
                                    dtype=torch.float).to(self.device)
         # dones = torch.tensor(transition_dict['dones'],
         #                      dtype=torch.float).view(-1, 1).to(self.device)
 
         # 时序差分目标
         td_target = rewards + self.gamma * self.critic(next_states)
+
         td_delta = td_target - self.critic(states)  # 时序差分误差
         log_probs = torch.log(self.actor(states).gather(1, actions))
         actor_loss = torch.mean(-log_probs * td_delta.detach())
@@ -140,6 +144,7 @@ if __name__ == "__main__":
     frequency = 100
     hidden_dim = 128
     gamma = 0.98
+    b2_size = 3000
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
         "cpu")
 
@@ -149,10 +154,39 @@ if __name__ == "__main__":
     action_dim = env.action_dim
     agent = ActorCritic(state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
                         gamma, device)
-    pmi = PMINetwork(hidden_dim=64)
-    return_list = rl_utils.train_on_policy_agent(env, agent, pmi, num_episodes, num_steps, frequency)
+    pmi = PMINetwork(hidden_dim=64, b2_size=b2_size)
+    return_list, other_return_list = rl_utils.train_on_policy_agent(env, agent, pmi, num_episodes, num_steps, frequency)
+
+    with open('../../results/returns.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Reward'])  # 写入表头
+        for reward in return_list:
+            writer.writerow([reward])
+    plot_reward_curve(return_list)
     plot_reward_curve(return_list)
 
+    # other_return_list = {
+    #     'target_tracking_return_list' :target_tracking_return_list,
+    #     'boundary_punishment_return_list':boundary_punishment_return_list,
+    #     'duplicate_tracking_punishment_return_list':duplicate_tracking_punishment_return_list
+    # }
+    with open('../../results/target_tracking_return_list.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['target_tracking'])  # 写入表头
+        for reward in other_return_list['target_tracking_return_list']:
+            writer.writerow([reward])
+    
+    with open('../../results/boundary_punishment_return_list.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['boundary_punishment'])  # 写入表头
+        for reward in other_return_list['boundary_punishment_return_list']:
+            writer.writerow([reward])
+    
+    with open('../../results/duplicate_tracking_punishment_return_list.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['duplicate_tracking_punishment'])  # 写入表头
+        for reward in other_return_list['duplicate_tracking_punishment_return_list']:
+            writer.writerow([reward])
     # env_name = 'CartPole-v0'
     # env = gym.make(env_name)
     # env.seed(0)

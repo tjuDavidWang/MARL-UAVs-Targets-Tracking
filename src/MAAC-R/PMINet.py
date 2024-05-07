@@ -95,7 +95,7 @@ class PMINetwork(nn.Module):
             loss.backward()
             optimizer.step()
 
-        print(f'PMI Loss: {loss.item()}')
+        # print(f'PMI Loss: {loss.item()}')
 
 
 
@@ -104,7 +104,8 @@ if __name__ == "__main__":
 
     h_dim = 64
 
-    model = PMINetwork(hidden_dim=h_dim)
+    model = PMINetwork(hidden_dim=64, b2_size=3000)
+    print(model)
 
     # 示例数据 (随机生成的样本)
     torch.manual_seed(0)

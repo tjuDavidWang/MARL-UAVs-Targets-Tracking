@@ -42,11 +42,18 @@ def train_on_policy_agent(env, agent, pmi, num_episodes, num_steps, frequency=50
     :return:
     """
     return_list = []
+    target_tracking_return_list = []
+    boundary_punishment_return_list = []
+    duplicate_tracking_punishment_return_list = []
     with tqdm(total=num_episodes, desc='Episodes') as pbar:
         for i in range(num_episodes):
             # initial environment
             env.reset()
             episode_return = 0
+            episode_target_tracking_return = 0
+            episode_boundary_punishment_return = 0
+            episode_duplicate_tracking_punishment_return = 0
+            
             transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': []}
 
             # episode start
@@ -64,23 +71,38 @@ def train_on_policy_agent(env, agent, pmi, num_episodes, num_steps, frequency=50
                 next_state_list, reward_list = env.step(pmi, action_list)  # action: List[int]
                 transition_dict['actions'].extend(action_list)
                 transition_dict['next_states'].extend(next_state_list)
-                transition_dict['rewards'].extend(reward_list)
+                transition_dict['rewards'].extend(reward_list['rewards'])
 
                 # update return
-                episode_return += sum(reward_list)
+                episode_return += sum(reward_list['rewards'])
+                episode_target_tracking_return += sum(reward_list['target_tracking_reward'])
+                episode_boundary_punishment_return += sum(reward_list['boundary_punishment'])
+                episode_duplicate_tracking_punishment_return += sum(reward_list['duplicate_tracking_punishment'])
+
 
             return_list.append(episode_return)
+            target_tracking_return_list.append(episode_target_tracking_return)
+            boundary_punishment_return_list.append(episode_boundary_punishment_return)
+            duplicate_tracking_punishment_return_list.append(episode_duplicate_tracking_punishment_return)
+
+            
             agent.update(transition_dict)
 
-            pmi.train_pmi(torch.tensor(transition_dict["states"]), env.n_uav)
+            pmi.train_pmi(torch.tensor(np.array(transition_dict["states"])), env.n_uav)
             if (i + 1) % frequency == 0:
                 pbar.set_postfix({'episode': '%d' % (i + 1),
                                   'return': '%.3f' % np.mean(return_list[-frequency:])})
                 draw_animation(env, num_steps=num_steps, ep_num=i)
 
             pbar.update(1)
+            
+            other_return_list = {
+                'target_tracking_return_list' :target_tracking_return_list,
+                'boundary_punishment_return_list':boundary_punishment_return_list,
+                'duplicate_tracking_punishment_return_list':duplicate_tracking_punishment_return_list
+            }
 
-    return return_list
+    return return_list, other_return_list
 
 
 def train_off_policy_agent(env, agent, num_episodes, replay_buffer, minimal_size, batch_size):

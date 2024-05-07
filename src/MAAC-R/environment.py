@@ -96,7 +96,7 @@ class Environment:
             uav.observe_target(self.target_list)
             uav.observe_uav(self.uav_list)
 
-        rewards = self.calculate_rewards(pmi)
+        rewards, target_tracking_reward, boundary_punishment, duplicate_tracking_punishment = self.calculate_rewards(pmi)
         next_states = self.get_states()
 
         # trace the position matrix
@@ -107,7 +107,14 @@ class Environment:
         self.position['all_uav_xs'].append(uav_xs)
         self.position['all_uav_ys'].append(uav_ys)
 
-        return next_states, rewards
+        reward = {
+            'rewards': rewards,
+            'target_tracking_reward': target_tracking_reward,
+            'boundary_punishment': boundary_punishment,
+            'duplicate_tracking_punishment': duplicate_tracking_punishment
+        }
+
+        return next_states, reward
 
     def __get_all_uav_position(self) -> (List[float], List[float]):
         uav_xs = []
@@ -139,13 +146,19 @@ class Environment:
     #             else:
     #                 uav.observation[target] = -1  # Not observed but within perception range
 
-    def calculate_rewards(self, pmi) -> [float]:
+    def calculate_rewards(self, pmi) -> ([float], float, float, float):
         # raw reward first
+        target_tracking_rewards = []
+        boundary_punishments = []    
+        duplicate_tracking_punishments = []    
         for uav in self.uav_list:
-            uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max)
+            target_tracking_reward, boundary_punishment, duplicate_tracking_punishment = uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max)
+            target_tracking_rewards.append(target_tracking_reward)
+            boundary_punishments.append(boundary_punishment)
+            duplicate_tracking_punishments.append(duplicate_tracking_punishment)
 
         rewards = []
         for uav in self.uav_list:
             uav.reward = uav.calculate_cooperative_reward(pmi, self.uav_list)
             rewards.append(uav.reward)
-        return rewards
+        return rewards, target_tracking_rewards, boundary_punishments, duplicate_tracking_punishments
