@@ -344,7 +344,7 @@ class UAV:
                 # _input = np.hstack((la, other_uav_la))
                 _input = la * other_uav_la
                 neighbor_dependencies.append(pmi_net.inference(_input.squeeze()))
-
+        # TODO 归一化
         neighbor_rewards = np.array(neighbor_rewards)
         neighbor_dependencies = np.array(neighbor_dependencies)
         self.reward = (1 - a) * self.raw_reward + a * np.sum(neighbor_rewards * neighbor_dependencies).item()

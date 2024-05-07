@@ -8,22 +8,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class PMIReplayBuffer:
-    def __init__(self, capacity):
-        self.buffer = collections.deque(maxlen=capacity)
+class CustomLoss(nn.Module):
+    def __init__(self):
+        super(CustomLoss, self).__init__()
 
-    def add(self, communication: (float, float, float, float, int),
-            observation: (float, float, float, float),
-            sb: (float, float, int)):
-        self.buffer.append((communication, observation, sb))
-
-    def sample(self, batch_size_):
-        transitions = random.sample(self.buffer, batch_size_)
-        state, action, reward, next_state, done = zip(*transitions)
-        return np.array(state), action, reward, np.array(next_state), done
-
-    def size(self):
-        return len(self.buffer)
+    def forward(self, output1, output2):
+        loss = torch.mean(torch.log(1 + torch.exp(-output1)) + torch.log(1 + torch.exp(output2)))
+        return loss
 
 
 class PMINetwork(nn.Module):
@@ -40,11 +31,10 @@ class PMINetwork(nn.Module):
         self.fc1 = nn.Linear(hidden_dim * 3, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, 1)
 
-        
     def forward(self, x):
         if isinstance(x, np.ndarray):
             x = torch.tensor(x, dtype=torch.float32)
-            
+        x = x.float()
         comm = x[:, :self.comm_dim]
         obs = x[:, self.comm_dim:self.comm_dim + self.obs_dim]
         boundary_state = x[:, self.comm_dim + self.obs_dim:self.comm_dim + self.obs_dim + self.boundary_state_dim]
@@ -61,6 +51,7 @@ class PMINetwork(nn.Module):
         return output
 
     def inference(self, single_data):
+        self.eval()
         if isinstance(single_data, np.ndarray):
             single_data = torch.tensor(single_data, dtype=torch.float32)
             
@@ -69,15 +60,43 @@ class PMINetwork(nn.Module):
         output = self.forward(single_data)
         return output.item()  # Extract and return the single scalar value
 
+    def train_pmi(self, train_data, n_uav, bs=16):
+        self.train()
+        optimizer = optim.Adam(self.parameters(), lr=0.001)
+        loss_function = CustomLoss()
+
+        i1, i2, i3 = torch.randint(0, n_uav, (3,))
+        data_1 = train_data[torch.arange(train_data.size(0)) % n_uav == i1]  # l1, a1
+        data_2 = train_data[torch.arange(train_data.size(0)) % n_uav == i2]  # l2, a1
+        data_3 = train_data[torch.arange(train_data.size(0)) % n_uav == i3]  # l2_, a2_
+        permutation = torch.randperm(data_1.size()[0])
+        for i in range(0, data_1.size()[0], bs):
+            optimizer.zero_grad()
+
+            indices = permutation[i:i + bs]
+
+            # 计算损失
+            input1 = (data_1 * data_2)
+            input2 = (data_1 * data_3)
+            output_l1_a1_l2_a2 = self.forward(input1[indices])
+            output_l1_a1_l3_a3 = self.forward(input2[indices])
+
+            loss = loss_function(output_l1_a1_l2_a2, output_l1_a1_l3_a3)
+
+            # 反向传播和优化
+            loss.backward()
+            optimizer.step()
+
+        print(f'PMI Loss: {loss.item()}')
+
+
 
 if __name__ == "__main__":
     # 初始化网络
 
-    hidden_dim = 64
+    h_dim = 64
 
-    model = PMINetwork(hidden_dim=hidden_dim)
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    loss_function = nn.BCEWithLogitsLoss()
+    model = PMINetwork(hidden_dim=h_dim)
 
     # 示例数据 (随机生成的样本)
     torch.manual_seed(0)
@@ -86,24 +105,7 @@ if __name__ == "__main__":
     num_epochs = 10
     batch_size = 5
 
-    for epoch in range(num_epochs):
-        permutation = torch.randperm(data.size()[0])
-        for i in range(0, data.size()[0], batch_size):
-            optimizer.zero_grad()
-
-            indices = permutation[i:i + batch_size]
-            batch_x = data[indices]
-
-            # 计算损失
-            outputs = model(batch_x)
-            target = torch.zeros_like(outputs)  # 目标是最小化输出，这里假设理想输出为0
-            loss = loss_function(outputs, target)
-
-            # 反向传播和优化
-            loss.backward()
-            optimizer.step()
-
-        print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item()}')
+    model.train_pmi(data, num_epochs, batch_size)
 
     # 检查模型输出
     print("Sample Outputs:", model.inference(data[:1]))

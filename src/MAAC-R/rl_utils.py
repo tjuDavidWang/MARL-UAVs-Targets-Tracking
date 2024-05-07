@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import collections
 import random
-import toolkits
+from toolkits import draw_animation
 
 
 class ReplayBuffer:
@@ -72,10 +72,12 @@ def train_on_policy_agent(env, agent, pmi, num_episodes, num_steps, frequency=50
             return_list.append(episode_return)
             agent.update(transition_dict)
 
+            pmi.train_pmi(torch.tensor(transition_dict["states"]), env.n_uav)
             if (i + 1) % frequency == 0:
                 pbar.set_postfix({'episode': '%d' % (i + 1),
                                   'return': '%.3f' % np.mean(return_list[-frequency:])})
-                draw_picture.draw_animation(env, num_steps=num_steps, ep_num=i)
+                draw_animation(env, num_steps=num_steps, ep_num=i)
+
             pbar.update(1)
 
     return return_list

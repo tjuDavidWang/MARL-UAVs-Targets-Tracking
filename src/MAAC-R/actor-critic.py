@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import rl_utils
 from environment import Environment
@@ -6,26 +7,80 @@ from toolkits import plot_reward_curve
 from PMINet import PMINetwork
 
 
-class PolicyNet(torch.nn.Module):
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(out_channels)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm1d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = None
+        if stride != 1 or in_channels != out_channels:
+            self.downsample = nn.Sequential(
+                nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm1d(out_channels)
+            )
+
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        if self.downsample is not None:
+            residual = self.downsample(x)
+        out += residual
+        out = self.relu(out)
+        return out
+
+
+class PolicyNet(nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
         super(PolicyNet, self).__init__()
-        self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, action_dim)
+        self.conv1 = nn.Conv1d(1, hidden_dim, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(hidden_dim)
+        self.relu = nn.ReLU(inplace=True)
+        self.residual_block1 = ResidualBlock(hidden_dim, hidden_dim)
+        self.residual_block2 = ResidualBlock(hidden_dim, hidden_dim)
+        self.fc = nn.Linear(hidden_dim, action_dim)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        return F.softmax(self.fc2(x), dim=1)
+        x = x.unsqueeze(1)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.residual_block1(x)
+        x = self.residual_block2(x)
+        x = F.avg_pool1d(x, 12)  # 这里使用平均池化，你也可以根据需求使用其他池化方式
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return F.softmax(x, dim=1)
 
 
-class ValueNet(torch.nn.Module):
+class ValueNet(nn.Module):
     def __init__(self, state_dim, hidden_dim):
         super(ValueNet, self).__init__()
-        self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, 1)
+        self.conv1 = nn.Conv1d(1, hidden_dim, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(hidden_dim)
+        self.relu = nn.ReLU(inplace=True)
+        self.residual_block1 = ResidualBlock(hidden_dim, hidden_dim)
+        self.residual_block2 = ResidualBlock(hidden_dim, hidden_dim)
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Linear(hidden_dim, 1)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        return self.fc2(x)
+        x = x.unsqueeze(1)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.residual_block1(x)
+        x = self.residual_block2(x)
+        x = self.avg_pool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x.squeeze(1)
 
 
 class ActorCritic:
@@ -80,7 +135,7 @@ class ActorCritic:
 if __name__ == "__main__":
     actor_lr = 1e-3
     critic_lr = 1e-2
-    num_episodes = 1000
+    num_episodes = 100
     num_steps = 1000
     frequency = 100
     hidden_dim = 128
