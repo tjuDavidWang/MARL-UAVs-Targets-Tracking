@@ -57,7 +57,7 @@ def draw_animation(env, num_steps, ep_num, frames=100):  # num_steps % frames mu
         print("num_steps % frames must be 0!")
         return
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6, 6))
     ax.set_xlim(-env.x_max / 3, env.x_max / 3 * 4)
     ax.set_ylim(-env.y_max / 3, env.y_max / 3 * 4)
     uav_plots = [ax.plot([], [], marker='o', linestyle='None')[0] for _ in range(env.n_uav)]
