@@ -18,19 +18,25 @@ class CustomLoss(nn.Module):
 
 
 class PMINetwork(nn.Module):
-    def __init__(self, comm_dim=5, obs_dim=4, boundary_state_dim=3, hidden_dim=64):
+    def __init__(self, comm_dim=5, obs_dim=4, boundary_state_dim=3, hidden_dim=64, b2_size=3000):
         super(PMINetwork, self).__init__()
         self.comm_dim = comm_dim
         self.obs_dim = obs_dim
         self.boundary_state_dim = boundary_state_dim
         self.hidden_dim = hidden_dim
+        self.b2_size = b2_size
+        
         self.fc_comm = nn.Linear(comm_dim, hidden_dim)
+        self.bn_comm = nn.BatchNorm1d(hidden_dim)  # BatchNorm for communication vector
         self.fc_obs = nn.Linear(obs_dim, hidden_dim)
+        self.bn_obs = nn.BatchNorm1d(hidden_dim)  # BatchNorm for observation vector
         self.fc_boundary_state = nn.Linear(boundary_state_dim, hidden_dim)
+        self.bn_boundary_state = nn.BatchNorm1d(hidden_dim)  # BatchNorm for boundary state vector
         
         self.fc1 = nn.Linear(hidden_dim * 3, hidden_dim)
+        self.bn1 = nn.BatchNorm1d(hidden_dim)  # BatchNorm for the first fully connected layer
         self.fc2 = nn.Linear(hidden_dim, 1)
-
+        
     def forward(self, x):
         if isinstance(x, np.ndarray):
             x = torch.tensor(x, dtype=torch.float32)
@@ -39,14 +45,18 @@ class PMINetwork(nn.Module):
         obs = x[:, self.comm_dim:self.comm_dim + self.obs_dim]
         boundary_state = x[:, self.comm_dim + self.obs_dim:self.comm_dim + self.obs_dim + self.boundary_state_dim]
         
-        # Process each part
-        comm_vec = F.relu(self.fc_comm(comm))
-        obs_vec = F.relu(self.fc_obs(obs))
-        boundary_state_vec = F.relu(self.fc_boundary_state(boundary_state))
+        # Process each part with BatchNorm
+        comm_vec = self.fc_comm(comm)
+        comm_vec = F.relu(self.bn_comm(comm_vec))
+        obs_vec = self.fc_obs(obs)
+        obs_vec = F.relu(self.bn_obs(obs_vec))
+        boundary_state_vec = self.fc_boundary_state(boundary_state)
+        boundary_state_vec = F.relu(self.bn_boundary_state(boundary_state_vec))
 
-        # Concatenate and process through further layers
+        # Concatenate and process through further layers with BatchNorm
         combined = torch.cat((comm_vec, obs_vec, boundary_state_vec), dim=1)
-        x = F.relu(self.fc1(combined))
+        x = self.fc1(combined)
+        x = F.relu(self.bn1(x))
         output = self.fc2(x)
         return output
 
@@ -60,29 +70,27 @@ class PMINetwork(nn.Module):
         output = self.forward(single_data)
         return output.item()  # Extract and return the single scalar value
 
-    def train_pmi(self, train_data, n_uav, bs=16):
+    def train_pmi(self, train_data, n_uav, batch_size=16):
         self.train()
         optimizer = optim.Adam(self.parameters(), lr=0.001)
         loss_function = CustomLoss()
+        # train_data (timesteps*n_uav,12)
+        timesteps =  train_data.size(0)//n_uav
+        train_data = train_data.view(timesteps,n_uav,12)
+        timestep_indices = torch.randint(low=0, high=timesteps, size=(self.b2_size,))
+        uav_indices = torch.randint(low=0, high=n_uav, size=(self.b2_size, 2))
+        selected_data = torch.zeros((self.b2_size, 2, 12))
+        for i in range(self.b2_size):
+            selected_data[i] = train_data[timestep_indices[i], uav_indices[i]]
 
-        i1, i2, i3 = torch.randint(0, n_uav, (3,))
-        data_1 = train_data[torch.arange(train_data.size(0)) % n_uav == i1]  # l1, a1
-        data_2 = train_data[torch.arange(train_data.size(0)) % n_uav == i2]  # l2, a1
-        data_3 = train_data[torch.arange(train_data.size(0)) % n_uav == i3]  # l2_, a2_
-        permutation = torch.randperm(data_1.size()[0])
-        for i in range(0, data_1.size()[0], bs):
+        for i in range(self.b2_size//batch_size):
             optimizer.zero_grad()
-
-            indices = permutation[i:i + bs]
-
-            # 计算损失
-            input1 = (data_1 * data_2)
-            input2 = (data_1 * data_3)
-            output_l1_a1_l2_a2 = self.forward(input1[indices])
-            output_l1_a1_l3_a3 = self.forward(input2[indices])
-
-            loss = loss_function(output_l1_a1_l2_a2, output_l1_a1_l3_a3)
-
+            batch_data = selected_data[i*batch_size:(i+1)*batch_size]
+            input_1_2 = batch_data[:,0].squeeze(1)
+            input_1_3 = batch_data[:,1].squeeze(1)
+            output_1_2 = self.forward(input_1_2)
+            output_1_3 = self.forward(input_1_3)
+            loss = loss_function(output_1_2, output_1_3)
             # 反向传播和优化
             loss.backward()
             optimizer.step()

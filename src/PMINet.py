@@ -58,13 +58,10 @@ class PMINetwork(nn.Module):
         return output
 
     def inference(self, single_data):
-        # Ensure single_data is a 2D tensor [1, total_dims]
-        if single_data.ndim == 1:
-            single_data = single_data.unsqueeze(0)
-        
-        # Forward the data through the model
-        output = self.forward(single_data)
-        return output
+            if single_data.ndim == 1:
+                single_data = single_data.unsqueeze(0)
+            output = self.forward(single_data)
+            return output.item()  # Extract and return the single scalar value
     
 if __name__ == "__main__":
     # 初始化网络
@@ -102,4 +99,4 @@ if __name__ == "__main__":
         print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item()}')
 
     # 检查模型输出
-    print("Sample Outputs:", model.inference(data[:1]).detach().numpy())
+    print("Sample Outputs:", model.inference(data[:1]))
