@@ -88,7 +88,7 @@ class Environment:
         :return: states, rewards
         """
         for i, target in enumerate(self.target_list):
-            target.update_position()
+            target.update_position(self.x_max, self.y_max)
 
         for i, uav in enumerate(self.uav_list):
             uav.update_position(actions[i])

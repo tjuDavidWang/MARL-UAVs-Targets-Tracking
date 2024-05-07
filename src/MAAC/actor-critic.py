@@ -3,27 +3,84 @@ import torch.nn.functional as F
 import rl_utils
 from environment import Environment
 from draw_picture import plot_reward_curve
+import torch.nn as nn
+import csv
 
-class PolicyNet(torch.nn.Module):
+
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(out_channels)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm1d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = None
+        if stride != 1 or in_channels != out_channels:
+            self.downsample = nn.Sequential(
+                nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm1d(out_channels)
+            )
+
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        if self.downsample is not None:
+            residual = self.downsample(x)
+        out += residual
+        out = self.relu(out)
+        return out
+
+
+class PolicyNet(nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
         super(PolicyNet, self).__init__()
-        self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, action_dim)
+        self.conv1 = nn.Conv1d(1, hidden_dim, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(hidden_dim)
+        self.relu = nn.ReLU(inplace=True)
+        self.residual_block1 = ResidualBlock(hidden_dim, hidden_dim)
+        self.residual_block2 = ResidualBlock(hidden_dim, hidden_dim)
+        self.fc = nn.Linear(hidden_dim, action_dim)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        return F.softmax(self.fc2(x), dim=1)
+        x = x.unsqueeze(1)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.residual_block1(x)
+        x = self.residual_block2(x)
+        x = F.avg_pool1d(x, 12)  # 这里使用平均池化，你也可以根据需求使用其他池化方式
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return F.softmax(x, dim=1)
 
 
-class ValueNet(torch.nn.Module):
+class ValueNet(nn.Module):
     def __init__(self, state_dim, hidden_dim):
         super(ValueNet, self).__init__()
-        self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, 1)
+        self.conv1 = nn.Conv1d(1, hidden_dim, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm1d(hidden_dim)
+        self.relu = nn.ReLU(inplace=True)
+        self.residual_block1 = ResidualBlock(hidden_dim, hidden_dim)
+        self.residual_block2 = ResidualBlock(hidden_dim, hidden_dim)
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Linear(hidden_dim, 1)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        return self.fc2(x)
+        x = x.unsqueeze(1)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.residual_block1(x)
+        x = self.residual_block2(x)
+        x = self.avg_pool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x.squeeze(1)
 
 
 class ActorCritic:
@@ -78,7 +135,7 @@ class ActorCritic:
 if __name__ == "__main__":
     actor_lr = 1e-3
     critic_lr = 1e-2
-    num_episodes = 10000
+    num_episodes = 1
     num_steps = 1000
     hidden_dim = 128
     gamma = 0.98
@@ -92,7 +149,14 @@ if __name__ == "__main__":
     agent = ActorCritic(state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
                         gamma, device)
     return_list = rl_utils.train_on_policy_agent(env, agent, num_episodes, num_steps)
+
+    with open('../../results/rewards.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Reward'])  # 写入表头
+        for reward in return_list:
+            writer.writerow([reward])
     plot_reward_curve(return_list)
+
     # env_name = 'CartPole-v0'
     # env = gym.make(env_name)
     # env.seed(0)
