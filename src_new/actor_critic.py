@@ -134,13 +134,14 @@ class ActorCritic:
 
         td_delta = td_target - self.critic(states)  # 时序差分误差
         log_probs = torch.log(self.actor(states).gather(1, actions))
+
         actor_loss = torch.mean(-log_probs * td_delta.detach())
-        # 均方误差损失函数
-        critic_loss = torch.mean(
-            f.mse_loss(self.critic(states), td_target.detach()))
+        critic_loss = torch.mean(f.mse_loss(self.critic(states), td_target.detach()))
         self.actor_optimizer.zero_grad()
         self.critic_optimizer.zero_grad()
-        actor_loss.backward()  # 计算策略网络的梯度
-        critic_loss.backward()  # 计算价值网络的梯度
-        self.actor_optimizer.step()  # 更新策略网络的参数
-        self.critic_optimizer.step()  # 更新价值网络的参数
+        actor_loss.backward()
+        critic_loss.backward()
+        self.actor_optimizer.step()
+        self.critic_optimizer.step()
+
+        return actor_loss, critic_loss

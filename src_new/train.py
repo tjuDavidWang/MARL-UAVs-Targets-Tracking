@@ -66,13 +66,14 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
             boundary_punishment_return_list.append(episode_boundary_punishment_return)
             duplicate_tracking_punishment_return_list.append(episode_duplicate_tracking_punishment_return)
 
-            agent.update(transition_dict)
+            actor_loss, critic_loss = agent.update(transition_dict)
 
             if pmi:
                 pmi.train_pmi(torch.tensor(np.array(transition_dict["states"])), env.n_uav)
             if (i + 1) % frequency == 0:
                 pbar.set_postfix({'episode': '%d' % (i + 1),
                                   'return': '%.3f' % np.mean(return_list[-frequency:])})
+                print(f"actor loss: {actor_loss}, critic loss: {critic_loss}")
                 draw_animation(config=config, env=env, num_steps=num_steps, ep_num=i)
 
             pbar.update(1)
