@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as f
+import os
 
 
 class CustomLoss(nn.Module):
@@ -19,6 +20,7 @@ class CustomLoss(nn.Module):
 class PMINetwork(nn.Module):
     def __init__(self, comm_dim=5, obs_dim=4, boundary_state_dim=3, hidden_dim=64, b2_size=3000):
         super(PMINetwork, self).__init__()
+        self.optimizer = optim.Adam(self.parameters(), lr=0.001)
         self.comm_dim = comm_dim
         self.obs_dim = obs_dim
         self.boundary_state_dim = boundary_state_dim
@@ -71,7 +73,6 @@ class PMINetwork(nn.Module):
 
     def train_pmi(self, train_data, n_uav, batch_size=16):
         self.train()
-        optimizer = optim.Adam(self.parameters(), lr=0.001)
         loss_function = CustomLoss()
         # train_data (timesteps*n_uav,12)
         timesteps = train_data.size(0) // n_uav
@@ -83,7 +84,7 @@ class PMINetwork(nn.Module):
             selected_data[i] = train_data[timestep_indices[i], uav_indices[i]]
 
         for i in range(self.b2_size // batch_size):
-            optimizer.zero_grad()
+            self.optimizer.zero_grad()
             batch_data = selected_data[i * batch_size:(i + 1) * batch_size]
             input_1_2 = batch_data[:, 0].squeeze(1)
             input_1_3 = batch_data[:, 1].squeeze(1)
@@ -92,7 +93,19 @@ class PMINetwork(nn.Module):
             loss = loss_function(output_1_2, output_1_3)
             # 反向传播和优化
             loss.backward()
-            optimizer.step()
+            self.optimizer.step()
+
+    def save(self, save_dir, epoch_i):
+        torch.save({
+            'model_state_dict': self.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict()
+        }, os.path.join(save_dir, 'pmi_weights_' + str(epoch_i) + '.pth'))
+
+    def load(self, path):
+        if path and os.path.exists(path):
+            checkpoint = torch.load(path)
+            self.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
 
 if __name__ == "__main__":

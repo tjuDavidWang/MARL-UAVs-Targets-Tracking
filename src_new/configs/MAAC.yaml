@@ -7,11 +7,11 @@ gpus: 1
 seed: 1234
 
 environment:
-  n_uav: 3
-  m_targets: 5
+  n_uav: 10
+  m_targets: 10
   x_max: 2000
   y_max: 2000
-  na: 5  # 离散化动作空间维数
+  na: 12  # 离散化动作空间维数
 
 uav:
   dt: 0.1
@@ -21,7 +21,7 @@ uav:
   dp: 200
 
 target:
-  v_max: 100
+  v_max: 25
   h_max: 6  # 表示 pi / 6
 
 actor_critic:

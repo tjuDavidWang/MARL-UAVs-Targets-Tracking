@@ -23,10 +23,10 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
     with tqdm(total=num_episodes, desc='Episodes') as pbar:
         for i in range(num_episodes):
             # initial environment
-            env.reset(t_v_max=pi / config["target"]["v_max"],
-                      t_h_max=pi / config["target"]["h_max"],
-                      u_v_max=pi / config["uav"]["v_max"],
-                      u_h_max=pi / config["uav"]["h_max"],
+            env.reset(t_v_max=config["target"]["v_max"],
+                      t_h_max=pi / float(config["target"]["h_max"]),
+                      u_v_max=config["uav"]["v_max"],
+                      u_h_max=pi / float(config["uav"]["h_max"]),
                       na=config["environment"]["na"],
                       dc=config["uav"]["dc"],
                       dp=config["uav"]["dp"],
@@ -79,6 +79,8 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
                 # save results and weights
                 draw_animation(config=config, env=env, num_steps=num_steps, ep_num=i)
                 agent.save(config["save_dir"], i + 1)
+                if pmi:
+                    pmi.save(config["save_dir"], i + 1)
 
             pbar.update(1)
 

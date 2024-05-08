@@ -159,12 +159,12 @@ class ActorCritic:
         }, os.path.join(save_dir, 'critic_weights_' + str(epoch_i) + '.pth'))
 
     def load(self, actor_path, critic_path):
-        if os.path.exists(actor_path):
+        if actor_path and os.path.exists(actor_path):
             checkpoint = torch.load(actor_path)
             self.actor.load_state_dict(checkpoint['model_state_dict'])
             self.actor_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-        if os.path.exists(critic_path):
+        if critic_path and os.path.exists(critic_path):
             checkpoint = torch.load(critic_path)
             self.critic.load_state_dict(checkpoint['model_state_dict'])
             self.critic_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

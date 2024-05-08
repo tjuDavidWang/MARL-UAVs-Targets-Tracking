@@ -47,14 +47,14 @@ class Environment:
                              init_y,
                              random.uniform(-pi, pi),
                              random.randint(0, self.action_dim - 1),
-                             t_v_max, t_h_max, na, dc, dp, dt) for _ in range(self.n_uav)]
+                             u_v_max, u_h_max, na, dc, dp, dt) for _ in range(self.n_uav)]
 
         # the initial position of the target is random, having randon headings
         self.target_list = [TARGET(random.uniform(0, self.x_max),
                                    random.uniform(0, self.y_max),
                                    random.uniform(-pi, pi),
                                    random.uniform(-pi/6, pi/6),
-                                   u_v_max, u_h_max, dt)
+                                   t_v_max, t_h_max, dt)
                             for _ in range(self.m_targets)]
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
 
