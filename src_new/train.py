@@ -71,10 +71,14 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
             if pmi:
                 pmi.train_pmi(torch.tensor(np.array(transition_dict["states"])), env.n_uav)
             if (i + 1) % frequency == 0:
+                # print some information
                 pbar.set_postfix({'episode': '%d' % (i + 1),
                                   'return': '%.3f' % np.mean(return_list[-frequency:])})
                 print(f"actor loss: {actor_loss}, critic loss: {critic_loss}")
+
+                # save results and weights
                 draw_animation(config=config, env=env, num_steps=num_steps, ep_num=i)
+                agent.save(config["save_dir"], i + 1)
 
             pbar.update(1)
 

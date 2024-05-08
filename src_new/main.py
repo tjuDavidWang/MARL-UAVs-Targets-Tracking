@@ -43,6 +43,7 @@ def main(args):
                         critic_lr=float(config["actor_critic"]["critic_lr"]),
                         gamma=float(config["actor_critic"]["gamma"]),
                         device=config["devices"][0])  # 只用第一个device
+    agent.load(args.actor, args.critic)
 
     # 初始化 pmi
     if args.method == "MAAC":
@@ -74,11 +75,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
 
     # 添加超参数
-    parser.add_argument("--hidden_dim", type=int, default=128, help="actor网络和critic网络的隐藏层维数")
-    parser.add_argument("--num_episodes", type=int, default=1, help="训练轮数")
-    parser.add_argument("--num_steps", type=int, default=100, help="每轮进行步数")
-    parser.add_argument("--frequency", type=int, default=50, help="打印信息及保存的频率")
-    parser.add_argument("--method", help="", default="MAAC-R", choices=["MAAC", "MAAC-R", "MAAC-G"])
+    parser.add_argument("-h", "--hidden_dim", type=int, default=128, help="actor网络和critic网络的隐藏层维数")
+    parser.add_argument("-e", "--num_episodes", type=int, default=1, help="训练轮数")
+    parser.add_argument("-s", "--num_steps", type=int, default=100, help="每轮进行步数")
+    parser.add_argument("-f", "--frequency", type=int, default=50, help="打印信息及保存的频率")
+    parser.add_argument("-a", "--actor", type=str, default=None, help="actor网络权重的路径")
+    parser.add_argument("-c", "--critic", type=str, default=None, help="critic网络权重的路径")
+    parser.add_argument("-m", "--method", help="", default="MAAC-R", choices=["MAAC", "MAAC-R", "MAAC-G"])
     # 解析命令行参数
     main_args = parser.parse_args()
 

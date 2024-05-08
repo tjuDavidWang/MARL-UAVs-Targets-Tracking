@@ -31,7 +31,7 @@ def draw_animation(config, env, num_steps, ep_num, frames=100, trace=10, interna
         print("num_steps % frames must be 0!")
         return
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6, 6))
     ax.set_xlim(-env.x_max / 3, env.x_max / 3 * 4)
     ax.set_ylim(-env.y_max / 3, env.y_max / 3 * 4)
     uav_plots = [ax.plot([], [], marker='o', color='b', linestyle='None')[0] for _ in range(env.n_uav)]
@@ -57,7 +57,7 @@ def draw_animation(config, env, num_steps, ep_num, frames=100, trace=10, interna
 
 
 def plot_reward_curve(config, return_list, name):
-    plt.figure()
+    plt.figure(figsize=(6, 6))
     plt.plot(return_list)
     plt.xlabel('Episodes')
     plt.ylabel('Total Return')

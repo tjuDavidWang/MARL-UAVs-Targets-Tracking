@@ -1,3 +1,5 @@
+import os.path
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as f
@@ -145,3 +147,24 @@ class ActorCritic:
         self.critic_optimizer.step()
 
         return actor_loss, critic_loss
+
+    def save(self, save_dir, epoch_i):
+        torch.save({
+            'model_state_dict': self.actor.state_dict(),
+            'optimizer_state_dict': self.actor_optimizer.state_dict()
+        }, os.path.join(save_dir, 'actor_weights_' + str(epoch_i) + '.pth'))
+        torch.save({
+            'model_state_dict': self.critic.state_dict(),
+            'optimizer_state_dict': self.critic_optimizer.state_dict()
+        }, os.path.join(save_dir, 'critic_weights_' + str(epoch_i) + '.pth'))
+
+    def load(self, actor_path, critic_path):
+        if os.path.exists(actor_path):
+            checkpoint = torch.load(actor_path)
+            self.actor.load_state_dict(checkpoint['model_state_dict'])
+            self.actor_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+        if os.path.exists(critic_path):
+            checkpoint = torch.load(critic_path)
+            self.critic.load_state_dict(checkpoint['model_state_dict'])
+            self.critic_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
