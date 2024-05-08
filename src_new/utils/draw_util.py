@@ -26,7 +26,7 @@ def update(frame, env, uav_plots, target_plots, uav_search_patches, steps, trace
     return target_plots + uav_plots + uav_search_patches
 
 
-def draw_animation(env, num_steps, ep_num, frames=100, trace=10, internal=10):  # num_steps % frames must be 0
+def draw_animation(config, env, num_steps, ep_num, frames=100, trace=10, internal=10):  # num_steps % frames must be 0
     if num_steps % frames != 0:
         print("num_steps % frames must be 0!")
         return
@@ -52,7 +52,7 @@ def draw_animation(env, num_steps, ep_num, frames=100, trace=10, internal=10):  
                                          internal),
                                   blit=True, interval=50, repeat=True)
     # 保存动画为gif格式
-    ani.save('../../results/' + 'animated_plot_' + str(ep_num + 1) + '.gif', writer='imagemagick')
+    ani.save(os.path.join(config["save_dir"], 'animated_plot_' + str(ep_num + 1) + '.gif'), writer='imagemagick')
     # plt.show()
 
 

@@ -73,7 +73,7 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
             if (i + 1) % frequency == 0:
                 pbar.set_postfix({'episode': '%d' % (i + 1),
                                   'return': '%.3f' % np.mean(return_list[-frequency:])})
-                draw_animation(env, num_steps=num_steps, ep_num=i)
+                draw_animation(config=config, env=env, num_steps=num_steps, ep_num=i)
 
             pbar.update(1)
 
