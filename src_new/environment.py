@@ -7,8 +7,7 @@ from typing import List
 
 
 class Environment:
-    def __init__(self, n_uav: int = 3, m_targets: int = 5, x_max: float = 2000, y_max: float = 2000,
-                 na: int = 5):
+    def __init__(self, n_uav: int, m_targets: int, x_max: float, y_max: float, na: int):
         """
         :param n_uav: scalar
         :param m_targets: scalar
@@ -17,7 +16,6 @@ class Environment:
         :param na: scalar
         """
         # size of the environment
-        # self.d_min = d_min
         self.x_max = x_max
         self.y_max = y_max
 
@@ -34,35 +32,29 @@ class Environment:
         # agents
         self.uav_list = []
         self.target_list = []
-        self.reset()
 
         # position of uav and target
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
 
-    def reset(self):
+    def reset(self, t_v_max, t_h_max, u_v_max, u_h_max, na, dc, dp, dt, init_x=200, init_y=200):
         """
-        reset the location for all uav_s at (self.d_min, self.d_min)
+        reset the location for all uav_s at (init_x, init_y)
+        reset the store position to empty
         :return: should be the initial states !!!!
         """
         # the initial position of the uav is (self.d_min, self.d_min), having randon headings
-        self.uav_list = [UAV(200, 200, random.uniform(-pi, pi),
-                             random.randint(0, self.action_dim - 1)) for _ in range(self.n_uav)]
-        # the initial position of the uav is (self.d_min, self.d_min), having randon headings
-        # self.uav_list = [UAV(0, 0, random.uniform(-pi, pi),
-        #                      random.randint(0, self.action_dim - 1)) for _ in range(self.n_uav)]
+        self.uav_list = [UAV(init_x,
+                             init_y,
+                             random.uniform(-pi, pi),
+                             random.randint(0, self.action_dim - 1),
+                             t_v_max, t_h_max, na, dc, dp, dt) for _ in range(self.n_uav)]
 
         # the initial position of the target is random, having randon headings
-        # self.target_list = [UAV(random.uniform(0, self.x_max),
-        #                         random.uniform(0, self.y_max),
-        #                         random.uniform(-pi, pi),
-        #                         random.randint(0, self.action_dim - 1))  # TODO, 目标可以连续移动
-        #                     for _ in range(self.m_targets)]
         self.target_list = [TARGET(random.uniform(0, self.x_max),
                                    random.uniform(0, self.y_max),
                                    random.uniform(-pi, pi),
                                    random.uniform(-pi/6, pi/6),
-                                   self.x_max,
-                                   self.y_max)
+                                   u_v_max, u_h_max, dt)
                             for _ in range(self.m_targets)]
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
 
@@ -72,31 +64,34 @@ class Environment:
         :return: list of np array, each element is a 1-dim array with size of 12
         """
         uav_states = []
-
         # collect the overall communication and target observation by each uav
         for uav in self.uav_list:
             uav_states.append(uav.get_local_state())
-
-        # global state of target, maybe not used
-        # for target in self.target_list:
-        #     target_states.append(target.target_observation)
         return uav_states
 
     def step(self, pmi, actions):
         """
         state transfer functions
+        :param pmi: PMI network
         :param actions: {0,1,...,Na - 1}
         :return: states, rewards
         """
+        # update the position of targets
         for i, target in enumerate(self.target_list):
-            target.update_position()
+            target.update_position(self.x_max, self.y_max)
 
+        # update the position of targets
         for i, uav in enumerate(self.uav_list):
             uav.update_position(actions[i])
+
+            # observation and communication
             uav.observe_target(self.target_list)
             uav.observe_uav(self.uav_list)
 
-        rewards, target_tracking_reward, boundary_punishment, duplicate_tracking_punishment = self.calculate_rewards(pmi)
+        (rewards,
+         target_tracking_reward,
+         boundary_punishment,
+         duplicate_tracking_punishment) = self.calculate_rewards(pmi)
         next_states = self.get_states()
 
         # trace the position matrix
@@ -117,6 +112,9 @@ class Environment:
         return next_states, reward
 
     def __get_all_uav_position(self) -> (List[float], List[float]):
+        """
+        :return: all the position of the uav through this epoch
+        """
         uav_xs = []
         uav_ys = []
         for uav in self.uav_list:
@@ -125,6 +123,9 @@ class Environment:
         return uav_xs, uav_ys
 
     def __get_all_target_position(self) -> (List[float], List[float]):
+        """
+        :return: all the position of the targets through this epoch
+        """
         target_xs = []
         target_ys = []
         for target in self.target_list:
@@ -133,32 +134,28 @@ class Environment:
         return target_xs, target_ys
 
     def get_uav_and_target_position(self) -> (List[float], List[float], List[float], List[float]):
+        """
+        :return: both the uav and the target position matrix
+        """
         return (self.position['all_uav_xs'], self.position['all_uav_ys'],
                 self.position['all_target_xs'], self.position['all_target_ys'])
-
-    # def observe_target(self, targets_list):
-    #     for uav in self.uav_s:
-    #         uav.observation = {}  # Reset observed targets
-    #         for target in targets_list:
-    #             dist = self.distance(uav, target)
-    #             if dist <= uav.dp:
-    #                 uav.observation[target] = dist
-    #             else:
-    #                 uav.observation[target] = -1  # Not observed but within perception range
 
     def calculate_rewards(self, pmi) -> ([float], float, float, float):
         # raw reward first
         target_tracking_rewards = []
-        boundary_punishments = []    
-        duplicate_tracking_punishments = []    
+        boundary_punishments = []
+        duplicate_tracking_punishments = []
         for uav in self.uav_list:
-            target_tracking_reward, boundary_punishment, duplicate_tracking_punishment = uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max)
+            (target_tracking_reward,
+             boundary_punishment,
+             duplicate_tracking_punishment) = uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max)
+
             target_tracking_rewards.append(target_tracking_reward)
             boundary_punishments.append(boundary_punishment)
             duplicate_tracking_punishments.append(duplicate_tracking_punishment)
 
         rewards = []
         for uav in self.uav_list:
-            uav.reward = uav.calculate_cooperative_reward(pmi, self.uav_list)
+            uav.calculate_cooperative_reward(self.uav_list, pmi)
             rewards.append(uav.reward)
         return rewards, target_tracking_rewards, boundary_punishments, duplicate_tracking_punishments
