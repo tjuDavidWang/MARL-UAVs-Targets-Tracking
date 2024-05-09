@@ -91,9 +91,9 @@ if __name__ == "__main__":
 
     # 添加超参数
     parser.add_argument("--hidden_dim", type=int, default=128, help="actor网络和critic网络的隐藏层维数")
-    parser.add_argument("-e", "--num_episodes", type=int, default=1000, help="训练轮数")
+    parser.add_argument("-e", "--num_episodes", type=int, default=10, help="训练轮数")
     parser.add_argument("-s", "--num_steps", type=int, default=200, help="每轮进行步数")
-    parser.add_argument("-f", "--frequency", type=int, default=50, help="打印信息及保存的频率")
+    parser.add_argument("-f", "--frequency", type=int, default=1, help="打印信息及保存的频率")
     parser.add_argument("-a", "--actor", type=str, default=None, help="actor网络权重的路径")
     parser.add_argument("-c", "--critic", type=str, default=None, help="critic网络权重的路径")
     parser.add_argument("-p", "--pmi", type=str, default=None, help="pmi网络权重的路径")

@@ -35,6 +35,12 @@ def get_config(config_file):
     # snapshot hyperparameters
     mkdir(config['result_dir'])
     mkdir(save_dir)
+    mkdir(os.path.join(save_dir, "actor"))
+    mkdir(os.path.join(save_dir, "critic"))
+    mkdir(os.path.join(save_dir, "pmi"))
+    mkdir(os.path.join(save_dir, "animated"))
+    mkdir(os.path.join(save_dir, "t_xy"))
+    mkdir(os.path.join(save_dir, "u_xy"))
 
     # create cuda devices
     set_device(config)
