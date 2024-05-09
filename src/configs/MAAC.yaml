@@ -1,0 +1,31 @@
+exp_name: MAAC
+result_dir: ../results/MAAC
+# 第一个cuda device的编号, -1代表cpu
+first_device: 0
+# cuda device的数量, 使用cpu时无效
+gpus: 1
+seed: 1234
+
+environment:
+  n_uav: 10
+  m_targets: 10
+  x_max: 2000
+  y_max: 2000
+  na: 12  # 离散化动作空间维数
+
+uav:
+  dt: 0.1
+  v_max: 100
+  h_max: 6  # 表示 pi / 6
+  dc: 500
+  dp: 200
+
+target:
+  v_max: 25
+  h_max: 6  # 表示 pi / 6
+
+actor_critic:
+  actor_lr: 1e-4
+  critic_lr: 5e-4
+  hidden_dim: 128
+  gamma: 0.95
