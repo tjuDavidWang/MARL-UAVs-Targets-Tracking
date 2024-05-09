@@ -168,7 +168,7 @@ class Environment:
         t_xy = np.array([self.position["all_target_xs"],
                          self.position["all_target_ys"]]).transpose()  # m_target * num_steps * 2
 
-        np.savetxt(os.path.join(save_dir, 'u_xy' + str(epoch_i) + '.csv'),
+        np.savetxt(os.path.join(save_dir, "u_xy", 'u_xy' + str(epoch_i) + '.csv'),
                    u_xy.reshape(-1, 2), delimiter=',', header='x,y', comments='')
-        np.savetxt(os.path.join(save_dir, 't_xy' + str(epoch_i) + '.csv'),
+        np.savetxt(os.path.join(save_dir, "t_xy", 't_xy' + str(epoch_i) + '.csv'),
                    t_xy.reshape(-1, 2), delimiter=',', header='x,y', comments='')

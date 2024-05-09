@@ -2,7 +2,8 @@ import numpy as np
 from math import cos, sin, sqrt, exp, pi
 from typing import List, Tuple
 from src.models.PMINet import PMINetwork
-from target import TARGET
+from src.agent.target import TARGET
+from scipy.special import softmax
 
 
 class UAV:
@@ -270,9 +271,13 @@ class UAV:
                 _input = la * other_uav_la
                 neighbor_dependencies.append(pmi_net.inference(_input.squeeze()))
 
-        neighbor_rewards = np.array(neighbor_rewards)
-        neighbor_dependencies = np.array(neighbor_dependencies)
-        self.reward = (1 - a) * self.raw_reward + a * np.sum(neighbor_rewards * neighbor_dependencies).item()
+        if len(neighbor_rewards):
+            neighbor_rewards = np.array(neighbor_rewards)
+            neighbor_dependencies = np.array(neighbor_dependencies).astype(np.float32)
+            softmax_values = softmax(neighbor_dependencies)
+            self.reward = (1 - a) * self.raw_reward + a * np.sum(neighbor_rewards * softmax_values).item()
+        else:
+            self.reward = (1 - a) * self.raw_reward
         return self.reward
 
     def __calculate_cooperative_reward_by_mean(self, uav_list: List['UAV'], a) -> float:

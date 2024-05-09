@@ -113,7 +113,7 @@ class ActorCritic:
         states_np = np.array(states)[np.newaxis, :]  # 直接使用np.array来转换
         states_tensor = torch.tensor(states_np, dtype=torch.float).to(self.device)
         probs = self.actor(states_tensor)
-        action_dist = torch.distributions.Categorical(probs)
+        action_dist = torch.distributions.Categorical(probs)  # TODO ?
         action = action_dist.sample()
         return action
 
@@ -152,11 +152,11 @@ class ActorCritic:
         torch.save({
             'model_state_dict': self.actor.state_dict(),
             'optimizer_state_dict': self.actor_optimizer.state_dict()
-        }, os.path.join(save_dir, 'actor_weights_' + str(epoch_i) + '.pth'))
+        }, os.path.join(save_dir, "actor", 'actor_weights_' + str(epoch_i) + '.pth'))
         torch.save({
             'model_state_dict': self.critic.state_dict(),
             'optimizer_state_dict': self.critic_optimizer.state_dict()
-        }, os.path.join(save_dir, 'critic_weights_' + str(epoch_i) + '.pth'))
+        }, os.path.join(save_dir, "critic", 'critic_weights_' + str(epoch_i) + '.pth'))
 
     def load(self, actor_path, critic_path):
         if actor_path and os.path.exists(actor_path):

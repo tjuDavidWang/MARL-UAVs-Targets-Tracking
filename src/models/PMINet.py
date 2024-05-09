@@ -103,7 +103,7 @@ class PMINetwork(nn.Module):
         torch.save({
             'model_state_dict': self.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict()
-        }, os.path.join(save_dir, 'pmi_weights_' + str(epoch_i) + '.pth'))
+        }, os.path.join(save_dir, "pmi", 'pmi_weights_' + str(epoch_i) + '.pth'))
 
     def load(self, path):
         if path and os.path.exists(path):
