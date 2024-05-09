@@ -108,7 +108,7 @@ class ActorCritic:
     def take_action(self, states):
         """
         :param states: nparray, size(state_dim,) 代表无人机的状态
-        :return: //TODO int? 这个无人机应该采样的动作
+        :return:
         """
         states_np = np.array(states)[np.newaxis, :]  # 直接使用np.array来转换
         states_tensor = torch.tensor(states_np, dtype=torch.float).to(self.device)

@@ -21,7 +21,7 @@ uav:
   dp: 200
 
 target:
-  v_max: 100
+  v_max: 25
   h_max: 6  # 表示 pi / 6
 
 actor_critic:

@@ -1,7 +1,7 @@
 import numpy as np
 from math import cos, sin, sqrt, exp, pi
 from typing import List, Tuple
-from PMINet import PMINetwork
+from src.models.PMINet import PMINetwork
 from target import TARGET
 
 
@@ -269,7 +269,7 @@ class UAV:
                 other_uav_la = other_uav.get_local_state()
                 _input = la * other_uav_la
                 neighbor_dependencies.append(pmi_net.inference(_input.squeeze()))
-        # TODO 归一化
+
         neighbor_rewards = np.array(neighbor_rewards)
         neighbor_dependencies = np.array(neighbor_dependencies)
         self.reward = (1 - a) * self.raw_reward + a * np.sum(neighbor_rewards * neighbor_dependencies).item()

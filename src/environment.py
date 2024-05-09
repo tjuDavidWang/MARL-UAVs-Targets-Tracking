@@ -1,7 +1,7 @@
 import os.path
 
-from uav import UAV
-from target import TARGET
+from src.agent.uav import UAV
+from src.agent.target import TARGET
 import numpy as np
 from math import pi
 import random

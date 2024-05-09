@@ -1,10 +1,10 @@
 import argparse
 import os.path
 from environment import Environment
-from actor_critic import ActorCritic
+from src.models.actor_critic import ActorCritic
 from utils.args_util import get_config
 from train import train
-from PMINet import PMINetwork
+from src.models.PMINet import PMINetwork
 from utils.data_util import save_csv
 from utils.draw_util import plot_reward_curve
 
