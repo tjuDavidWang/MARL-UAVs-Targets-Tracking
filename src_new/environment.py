@@ -1,3 +1,5 @@
+import os.path
+
 from uav import UAV
 from target import TARGET
 import numpy as np
@@ -159,3 +161,14 @@ class Environment:
             uav.calculate_cooperative_reward(self.uav_list, pmi)
             rewards.append(uav.reward)
         return rewards, target_tracking_rewards, boundary_punishments, duplicate_tracking_punishments
+
+    def save_position(self, save_dir, epoch_i):
+        u_xy = np.array([self.position["all_uav_xs"],
+                         self.position["all_uav_ys"]]).transpose()  # n_uav * num_steps * 2
+        t_xy = np.array([self.position["all_target_xs"],
+                         self.position["all_target_ys"]]).transpose()  # m_target * num_steps * 2
+
+        np.savetxt(os.path.join(save_dir, 'u_xy' + str(epoch_i) + '.csv'),
+                   u_xy.reshape(-1, 2), delimiter=',', header='x,y', comments='')
+        np.savetxt(os.path.join(save_dir, 't_xy' + str(epoch_i) + '.csv'),
+                   t_xy.reshape(-1, 2), delimiter=',', header='x,y', comments='')

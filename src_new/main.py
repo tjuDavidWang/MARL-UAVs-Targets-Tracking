@@ -9,7 +9,7 @@ from utils.data_util import save_csv
 from utils.draw_util import plot_reward_curve
 
 
-def print_variables(vdict, name="args"):
+def print_config(vdict, name="config"):
     """
     :param vdict: dict, 待打印的字典
     :param name: str, 打印的字典名称
@@ -25,10 +25,24 @@ def print_variables(vdict, name="args"):
     print("-----------------------------------------")
 
 
+def print_args(args, name="args"):
+    """
+    :param args:
+    :param name: str, 打印的字典名称
+    :return: None
+    """
+    print("-----------------------------------------")
+    print("|This is the summary of {}:".format(name))
+    for arg in vars(args):
+        print("| {:<11} : {}".format(arg, getattr(args, arg)))
+    print("-----------------------------------------")
+
+
 def main(args):
     # 获取方法所用的参数
     config = get_config(os.path.join("configs", args.method + ".yaml"))
-    print_variables(config)
+    print_config(config)
+    print_args(args)
 
     # 初始化environment, agent
     env = Environment(n_uav=config["environment"]["n_uav"],

@@ -1,8 +1,11 @@
+import os.path
+
 from tqdm import tqdm
 import numpy as np
 import torch
 from utils.draw_util import draw_animation
 from math import pi
+from torch.utils.tensorboard import SummaryWriter
 
 
 def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
@@ -16,6 +19,8 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
     :param num_episodes: 局数
     :return:
     """
+    writer = SummaryWriter(log_dir=os.path.join(config["save_dir"], 'logs'))  # 可以指定log存储的目录
+
     return_list = []
     target_tracking_return_list = []
     boundary_punishment_return_list = []
@@ -67,9 +72,13 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
             duplicate_tracking_punishment_return_list.append(episode_duplicate_tracking_punishment_return)
 
             actor_loss, critic_loss = agent.update(transition_dict)
+            writer.add_scalar('actor_loss', actor_loss, i)
+            writer.add_scalar('critic_loss', critic_loss, i)
 
             if pmi:
-                pmi.train_pmi(torch.tensor(np.array(transition_dict["states"])), env.n_uav)
+                avg_pmi_loss = pmi.train_pmi(config, torch.tensor(np.array(transition_dict["states"])), env.n_uav)
+                writer.add_scalar('avg_pmi_loss', avg_pmi_loss, i)
+
             if (i + 1) % frequency == 0:
                 # print some information
                 pbar.set_postfix({'episode': '%d' % (i + 1),
@@ -80,7 +89,9 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
                 draw_animation(config=config, env=env, num_steps=num_steps, ep_num=i)
                 agent.save(config["save_dir"], i + 1)
                 if pmi:
+                    print(f"avg pmi loss: {avg_pmi_loss}")
                     pmi.save(config["save_dir"], i + 1)
+                env.save_position(config["save_dir"], i + 1)
 
             pbar.update(1)
 
@@ -89,5 +100,7 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
                 'boundary_punishment_return_list': boundary_punishment_return_list,
                 'duplicate_tracking_punishment_return_list': duplicate_tracking_punishment_return_list
             }
+
+    writer.close()
 
     return return_list, other_return_list

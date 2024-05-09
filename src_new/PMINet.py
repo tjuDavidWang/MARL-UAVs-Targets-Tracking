@@ -20,7 +20,6 @@ class CustomLoss(nn.Module):
 class PMINetwork(nn.Module):
     def __init__(self, comm_dim=5, obs_dim=4, boundary_state_dim=3, hidden_dim=64, b2_size=3000):
         super(PMINetwork, self).__init__()
-        self.optimizer = optim.Adam(self.parameters(), lr=0.001)
         self.comm_dim = comm_dim
         self.obs_dim = obs_dim
         self.boundary_state_dim = boundary_state_dim
@@ -37,6 +36,7 @@ class PMINetwork(nn.Module):
         self.fc1 = nn.Linear(hidden_dim * 3, hidden_dim)
         self.bn1 = nn.BatchNorm1d(hidden_dim)  # BatchNorm for the first fully connected layer
         self.fc2 = nn.Linear(hidden_dim, 1)
+        self.optimizer = optim.Adam(self.parameters(), lr=0.001)
 
     def forward(self, x):
         if isinstance(x, np.ndarray):
@@ -71,7 +71,7 @@ class PMINetwork(nn.Module):
         output = self.forward(single_data)
         return output.item()  # Extract and return the single scalar value
 
-    def train_pmi(self, train_data, n_uav, batch_size=16):
+    def train_pmi(self, config, train_data, n_uav):
         self.train()
         loss_function = CustomLoss()
         # train_data (timesteps*n_uav,12)
@@ -83,17 +83,21 @@ class PMINetwork(nn.Module):
         for i in range(self.b2_size):
             selected_data[i] = train_data[timestep_indices[i], uav_indices[i]]
 
-        for i in range(self.b2_size // batch_size):
+        avg_loss = 0
+        for i in range(self.b2_size // config["pmi"]["batch_size"]):
             self.optimizer.zero_grad()
-            batch_data = selected_data[i * batch_size:(i + 1) * batch_size]
+            batch_data = selected_data[i * config["pmi"]["batch_size"]:(i + 1) * config["pmi"]["batch_size"]]
             input_1_2 = batch_data[:, 0].squeeze(1)
             input_1_3 = batch_data[:, 1].squeeze(1)
             output_1_2 = self.forward(input_1_2)
             output_1_3 = self.forward(input_1_3)
             loss = loss_function(output_1_2, output_1_3)
+            avg_loss += loss.item()
             # 反向传播和优化
             loss.backward()
             self.optimizer.step()
+        avg_loss /= (self.b2_size // config["pmi"]["batch_size"])
+        return avg_loss
 
     def save(self, save_dir, epoch_i):
         torch.save({
@@ -106,23 +110,3 @@ class PMINetwork(nn.Module):
             checkpoint = torch.load(path)
             self.load_state_dict(checkpoint['model_state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-
-
-if __name__ == "__main__":
-    # 初始化网络
-
-    h_dim = 64
-
-    model = PMINetwork(hidden_dim=64, b2_size=3000)
-    print(model)
-
-    # 示例数据 (随机生成的样本)
-    torch.manual_seed(0)
-    num_samples = 100
-    data = torch.randn(num_samples, 12)  # 随机生成100个样本，每个样本由4个数字组成
-    num_epochs = 10
-
-    model.train_pmi(data, num_epochs, batch_size=5)
-
-    # 检查模型输出
-    print("Sample Outputs:", model.inference(data[:1]))

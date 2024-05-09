@@ -33,3 +33,4 @@ actor_critic:
 pmi:
   hidden_dim: 128
   b2_size: 3000
+  batch_size: 16
