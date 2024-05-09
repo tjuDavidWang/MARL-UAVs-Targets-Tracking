@@ -9,7 +9,7 @@ You can simply use pip install to config the environment:
 
 ```sh
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install numpy matplotlib tqdm
+pip install numpy matplotlib tqdm tensorboard
 ```
 
 ### Run the code
@@ -22,8 +22,8 @@ python actor-critic.py
 
 - [x] vanilla MAAC
   - [x] Actor-Critic framework
-- [ ] MAAC-R
-  - [ ] reciprocal reward (with PMI network)
+- [x] MAAC-R
+  - [x] reciprocal reward (with PMI network)
 - [ ] MAAC-G
   - [ ] receive the global reward
 - [ ] 3D demo
