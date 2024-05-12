@@ -197,7 +197,7 @@ class UAV:
     def __calculate_multi_target_tracking_reward(self) -> float:
         """
         calculate multi target tracking reward
-        :return: scalar
+        :return: scalar [1, 2)
         """
         track_reward = 0
         for x, y, _, _ in self.target_observation:
@@ -210,7 +210,7 @@ class UAV:
         calculate duplicate tracking punishment
         :param uav_list: [class UAV]
         :param radio: radio用来控制惩罚的范围, 超出多远才算入惩罚
-        :return: scalar
+        :return: scalar (-e/2, -1/2]
         """
         total_punishment = 0
         for other_uav in uav_list:
