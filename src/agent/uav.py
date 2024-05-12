@@ -194,15 +194,18 @@ class UAV:
         # using weighted mean method:
         return self.__get_local_state_by_weighted_mean()
 
-    def __calculate_multi_target_tracking_reward(self) -> float:
+    def __calculate_multi_target_tracking_reward(self, uav_list) -> float:
         """
         calculate multi target tracking reward
         :return: scalar [1, 2)
         """
         track_reward = 0
-        for x, y, _, _ in self.target_observation:
-            distance = self.distance(x, y, self.x, self.y)
-            track_reward += 1 + (self.dp - distance) / self.dp
+        for other_uav in uav_list:
+            if other_uav != self:
+                distance = self.__distance(other_uav)
+                if distance <= self.dp:
+                    reward = 1 + (self.dp - distance) / self.dp
+                    track_reward += reward
         return track_reward
 
     def __calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=2) -> float:
@@ -246,7 +249,7 @@ class UAV:
         calculate three parts of the reward/punishment for this uav
         :return: float, float, float
         """
-        reward = alpha * self.__calculate_multi_target_tracking_reward()
+        reward = alpha * self.__calculate_multi_target_tracking_reward(uav_list)
         boundary_punishment = beta * self.__calculate_boundary_punishment(x_max, y_max)
         punishment = gamma * self.__calculate_duplicate_tracking_punishment(uav_list)
         self.raw_reward = reward + boundary_punishment + punishment
