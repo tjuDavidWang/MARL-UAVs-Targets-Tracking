@@ -72,6 +72,11 @@ def operate_epoch(config, env, agent, pmi, num_steps, cwriter_state=None, cwrite
         episode_boundary_punishment_return += sum(reward_list['boundary_punishment'])
         episode_duplicate_tracking_punishment_return += sum(reward_list['duplicate_tracking_punishment'])
 
+    episode_return /= num_steps * env.n_uav
+    episode_target_tracking_return /= num_steps * env.n_uav
+    episode_boundary_punishment_return /= num_steps * env.n_uav
+    episode_duplicate_tracking_punishment_return /= num_steps * env.n_uav
+
     return (transition_dict, episode_return, episode_target_tracking_return,
             episode_boundary_punishment_return, episode_duplicate_tracking_punishment_return)
 

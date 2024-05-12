@@ -1,5 +1,6 @@
 import os.path
-
+from math import e
+from utils.data_util import clip_and_normalize
 from agent.uav import UAV
 from agent.target import TARGET
 import numpy as np
@@ -155,6 +156,16 @@ class Environment:
                 self.position['all_target_xs'], self.position['all_target_ys'])
 
     def calculate_rewards(self, config, pmi) -> ([float], float, float, float):
+        # upper bound and lower bound
+        num_steps = config["num_steps"]
+        max_tt_return = 2 * config["environment"]["m_targets"] * num_steps
+        min_tt_return = 0
+        max_bp_return = 0
+        min_bp_return = (-(10 * config["uav"]["v_max"] * config["uav"]["dt"] * num_steps)
+                         / config["uav"]["dp"] * num_steps)
+        max_dtp_return = 0
+        min_dtp_return = -e / 2 * config["environment"]["n_uav"] / 2 * num_steps
+
         # raw reward first
         target_tracking_rewards = []
         boundary_punishments = []
@@ -162,17 +173,29 @@ class Environment:
         for uav in self.uav_list:
             (target_tracking_reward,
              boundary_punishment,
-             duplicate_tracking_punishment) = uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max,
-                                                                       config["uav"]["gamma"], config["uav"]["gamma"],
-                                                                       config["uav"]["gamma"])
+             duplicate_tracking_punishment) = uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max)
 
+            # clip and normalize
+            target_tracking_reward = (
+                clip_and_normalize(target_tracking_reward, min_tt_return, max_tt_return))
+            boundary_punishment = (
+                clip_and_normalize(boundary_punishment, min_bp_return, max_bp_return))
+            duplicate_tracking_punishment = (
+                clip_and_normalize(duplicate_tracking_punishment, min_dtp_return, max_dtp_return))
+
+            # append
             target_tracking_rewards.append(target_tracking_reward)
             boundary_punishments.append(boundary_punishment)
             duplicate_tracking_punishments.append(duplicate_tracking_punishment)
 
+            # weights
+            uav.raw_reward = (config["uav"]["alpha"] * target_tracking_reward + config["uav"]["beta"] *
+                              boundary_punishment + config["uav"]["gamma"] * duplicate_tracking_punishment)
+
         rewards = []
         for uav in self.uav_list:
-            uav.calculate_cooperative_reward(self.uav_list, pmi)
+            reward = uav.calculate_cooperative_reward(self.uav_list, pmi)
+            uav.reward = clip_and_normalize(reward, -1, 1)
             rewards.append(uav.reward)
         return rewards, target_tracking_rewards, boundary_punishments, duplicate_tracking_punishments
 

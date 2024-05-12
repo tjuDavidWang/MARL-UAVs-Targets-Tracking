@@ -19,9 +19,9 @@ uav:
   h_max: 6  # 表示 pi / 6
   dc: 500
   dp: 200
-  alpha: 1
-  beta: 1
-  gamma: 1
+  alpha: 0.33
+  beta: 0.33
+  gamma: 0.33
 
 target:
   v_max: 25

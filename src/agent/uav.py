@@ -244,15 +244,14 @@ class UAV:
             boundary_punishment = 10 * d_bdr / self.dp
         return boundary_punishment
 
-    def calculate_raw_reward(self, uav_list: List['UAV'], x_max, y_max, alpha, beta, gamma):
+    def calculate_raw_reward(self, uav_list: List['UAV'], x_max, y_max):
         """
         calculate three parts of the reward/punishment for this uav
         :return: float, float, float
         """
-        reward = alpha * self.__calculate_multi_target_tracking_reward(uav_list)
-        boundary_punishment = beta * self.__calculate_boundary_punishment(x_max, y_max)
-        punishment = gamma * self.__calculate_duplicate_tracking_punishment(uav_list)
-        self.raw_reward = reward + boundary_punishment + punishment
+        reward = self.__calculate_multi_target_tracking_reward(uav_list)
+        boundary_punishment = self.__calculate_boundary_punishment(x_max, y_max)
+        punishment = self.__calculate_duplicate_tracking_punishment(uav_list)
         return reward, boundary_punishment, punishment
 
     def __calculate_cooperative_reward_by_pmi(self, uav_list: List['UAV'], pmi_net: "PMINetwork", a) -> float:
@@ -278,10 +277,10 @@ class UAV:
             neighbor_rewards = np.array(neighbor_rewards)
             neighbor_dependencies = np.array(neighbor_dependencies).astype(np.float32)
             softmax_values = softmax(neighbor_dependencies)
-            self.reward = (1 - a) * self.raw_reward + a * np.sum(neighbor_rewards * softmax_values).item()
+            reward = (1 - a) * self.raw_reward + a * np.sum(neighbor_rewards * softmax_values).item()
         else:
-            self.reward = (1 - a) * self.raw_reward
-        return self.reward
+            reward = (1 - a) * self.raw_reward
+        return reward
 
     def __calculate_cooperative_reward_by_mean(self, uav_list: List['UAV'], a) -> float:
         """
@@ -295,9 +294,9 @@ class UAV:
             if other_uav != self and self.__distance(other_uav) <= self.dp:
                 neighbor_rewards.append(other_uav.raw_reward)
         # 没有加入PMI网络
-        self.reward = (1 - a) * self.raw_reward + a * sum(neighbor_rewards) / len(neighbor_rewards) \
+        reward = (1 - a) * self.raw_reward + a * sum(neighbor_rewards) / len(neighbor_rewards) \
             if len(neighbor_rewards) else 0
-        return self.reward
+        return reward
 
     def calculate_cooperative_reward(self, uav_list: List['UAV'], pmi_net=None, a=0.5) -> float:
         if pmi_net:

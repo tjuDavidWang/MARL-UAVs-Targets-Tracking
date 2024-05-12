@@ -38,9 +38,16 @@ def print_args(args, name="args"):
     print("-----------------------------------------")
 
 
+def add_args_to_config(config, args):
+    for arg in vars(args):
+        # print("| {:<11} : {}".format(arg, getattr(args, arg)))
+        config[str(arg)] = getattr(args, arg)
+
+
 def main(args):
     # 获取方法所用的参数
     config = get_config(os.path.join("configs", args.method + ".yaml"))
+    add_args_to_config(config, args)
     print_config(config)
     print_args(args)
 
@@ -57,7 +64,7 @@ def main(args):
                         critic_lr=float(config["actor_critic"]["critic_lr"]),
                         gamma=float(config["actor_critic"]["gamma"]),
                         device=config["devices"][0])  # 只用第一个device
-    agent.load(args.actor, args.critic)
+    agent.load(args.actor_path, args.critic_path)
 
     # 初始化 pmi
     if args.method == "MAAC":
@@ -65,7 +72,7 @@ def main(args):
     else:
         pmi = PMINetwork(hidden_dim=config["pmi"]["hidden_dim"],
                          b2_size=config["pmi"]["b2_size"])
-        pmi.load(args.pmi)
+        pmi.load(args.pmi_path)
 
     if args.phase == "train":
         return_list = train(config=config,
@@ -101,13 +108,12 @@ if __name__ == "__main__":
 
     # 添加超参数
     parser.add_argument("--phase", type=str, default="train", choices=["train", "evaluate"])
-    parser.add_argument("--hidden_dim", type=int, default=128, help="actor网络和critic网络的隐藏层维数")
     parser.add_argument("-e", "--num_episodes", type=int, default=10, help="训练轮数")
     parser.add_argument("-s", "--num_steps", type=int, default=200, help="每轮进行步数")
     parser.add_argument("-f", "--frequency", type=int, default=1, help="打印信息及保存的频率")
-    parser.add_argument("-a", "--actor", type=str, default=None, help="actor网络权重的路径")
-    parser.add_argument("-c", "--critic", type=str, default=None, help="critic网络权重的路径")
-    parser.add_argument("-p", "--pmi", type=str, default=None, help="pmi网络权重的路径")
+    parser.add_argument("-a", "--actor_path", type=str, default=None, help="actor网络权重的路径")
+    parser.add_argument("-c", "--critic_path", type=str, default=None, help="critic网络权重的路径")
+    parser.add_argument("-p", "--pmi_path", type=str, default=None, help="pmi网络权重的路径")
     parser.add_argument("-m", "--method", help="", default="MAAC-R", choices=["MAAC", "MAAC-R", "MAAC-G"])
     # 解析命令行参数
     main_args = parser.parse_args()
