@@ -1,10 +1,10 @@
 import argparse
 import os.path
 from environment import Environment
-from src.models.actor_critic import ActorCritic
+from models.actor_critic import ActorCritic
 from utils.args_util import get_config
-from train import train
-from src.models.PMINet import PMINetwork
+from train import train, evaluate
+from models.PMINet import PMINetwork
 from utils.data_util import save_csv
 from utils.draw_util import plot_reward_curve
 
@@ -67,21 +67,31 @@ def main(args):
                          b2_size=config["pmi"]["b2_size"])
         pmi.load(args.pmi)
 
-    return_list, other_return_list = train(config=config,
-                                           env=env,
-                                           agent=agent,
-                                           pmi=pmi,
-                                           num_episodes=args.num_episodes,
-                                           num_steps=args.num_steps,
-                                           frequency=args.frequency)
-    save_csv(config, return_list, other_return_list)
+    if args.phase == "train":
+        return_list = train(config=config,
+                            env=env,
+                            agent=agent,
+                            pmi=pmi,
+                            num_episodes=args.num_episodes,
+                            num_steps=args.num_steps,
+                            frequency=args.frequency)
+    elif args.phase == "evaluate":
+        return_list = evaluate(config=config,
+                               env=env,
+                               agent=agent,
+                               pmi=pmi,
+                               num_steps=args.num_steps)
+    else:
+        return
 
-    plot_reward_curve(config, return_list, "overall_return")
-    plot_reward_curve(config, other_return_list["target_tracking_return_list"],
+    save_csv(config, return_list)
+
+    plot_reward_curve(config, return_list['return_list'], "overall_return")
+    plot_reward_curve(config, return_list["target_tracking_return_list"],
                       "target_tracking_return_list")
-    plot_reward_curve(config, other_return_list["boundary_punishment_return_list"],
+    plot_reward_curve(config, return_list["boundary_punishment_return_list"],
                       "boundary_punishment_return_list")
-    plot_reward_curve(config, other_return_list["duplicate_tracking_punishment_return_list"],
+    plot_reward_curve(config, return_list["duplicate_tracking_punishment_return_list"],
                       "duplicate_tracking_punishment_return_list")
 
 
@@ -90,6 +100,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
 
     # 添加超参数
+    parser.add_argument("--phase", type=str, default="train", choices=["train", "evaluate"])
     parser.add_argument("--hidden_dim", type=int, default=128, help="actor网络和critic网络的隐藏层维数")
     parser.add_argument("-e", "--num_episodes", type=int, default=10, help="训练轮数")
     parser.add_argument("-s", "--num_steps", type=int, default=200, help="每轮进行步数")

@@ -27,14 +27,14 @@ class PMINetwork(nn.Module):
         self.b2_size = b2_size
 
         self.fc_comm = nn.Linear(comm_dim, hidden_dim)
-        self.bn_comm = nn.BatchNorm1d(hidden_dim)  # BatchNorm for communication vector
+        self.bn_comm = nn.BatchNorm1d(hidden_dim) 
         self.fc_obs = nn.Linear(obs_dim, hidden_dim)
-        self.bn_obs = nn.BatchNorm1d(hidden_dim)  # BatchNorm for observation vector
+        self.bn_obs = nn.BatchNorm1d(hidden_dim) 
         self.fc_boundary_state = nn.Linear(boundary_state_dim, hidden_dim)
-        self.bn_boundary_state = nn.BatchNorm1d(hidden_dim)  # BatchNorm for boundary state vector
+        self.bn_boundary_state = nn.BatchNorm1d(hidden_dim)  
 
         self.fc1 = nn.Linear(hidden_dim * 3, hidden_dim)
-        self.bn1 = nn.BatchNorm1d(hidden_dim)  # BatchNorm for the first fully connected layer
+        self.bn1 = nn.BatchNorm1d(hidden_dim)  
         self.fc2 = nn.Linear(hidden_dim, 1)
         self.optimizer = optim.Adam(self.parameters(), lr=0.001)
 

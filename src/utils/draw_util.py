@@ -54,7 +54,8 @@ def draw_animation(config, env, num_steps, ep_num, frames=100):
                                          num_steps),
                                   blit=True, interval=10, repeat=True)
     # 保存动画为gif格式
-    ani.save(os.path.join(config["save_dir"], "animated", 'animated_plot_' + str(ep_num + 1) + '.gif'), writer='imagemagick')
+    ani.save(os.path.join(config["save_dir"],
+                          "animated", 'animated_plot_' + str(ep_num + 1) + '.gif'), writer='pillow')
     plt.close(fig)
 
 

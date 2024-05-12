@@ -1,7 +1,7 @@
 import os.path
 
-from src.agent.uav import UAV
-from src.agent.target import TARGET
+from agent.uav import UAV
+from agent.target import TARGET
 import numpy as np
 from math import pi
 import random
@@ -38,7 +38,7 @@ class Environment:
         # position of uav and target
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
 
-    def reset(self, t_v_max, t_h_max, u_v_max, u_h_max, na, dc, dp, dt, init_x=200, init_y=200):
+    def __reset(self, t_v_max, t_h_max, u_v_max, u_h_max, na, dc, dp, dt, init_x, init_y):
         """
         reset the location for all uav_s at (init_x, init_y)
         reset the store position to empty
@@ -55,10 +55,21 @@ class Environment:
         self.target_list = [TARGET(random.uniform(0, self.x_max),
                                    random.uniform(0, self.y_max),
                                    random.uniform(-pi, pi),
-                                   random.uniform(-pi/6, pi/6),
+                                   random.uniform(-pi / 6, pi / 6),
                                    t_v_max, t_h_max, dt)
                             for _ in range(self.m_targets)]
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
+
+    def reset(self, config):
+        self.__reset(t_v_max=config["target"]["v_max"],
+                     t_h_max=pi / float(config["target"]["h_max"]),
+                     u_v_max=config["uav"]["v_max"],
+                     u_h_max=pi / float(config["uav"]["h_max"]),
+                     na=config["environment"]["na"],
+                     dc=config["uav"]["dc"],
+                     dp=config["uav"]["dp"],
+                     dt=config["uav"]["dt"],
+                     init_x=200, init_y=200)
 
     def get_states(self) -> (List['np.ndarray']):
         """
@@ -71,9 +82,10 @@ class Environment:
             uav_states.append(uav.get_local_state())
         return uav_states
 
-    def step(self, pmi, actions):
+    def step(self, config, pmi, actions):
         """
         state transfer functions
+        :param config:
         :param pmi: PMI network
         :param actions: {0,1,...,Na - 1}
         :return: states, rewards
@@ -93,7 +105,7 @@ class Environment:
         (rewards,
          target_tracking_reward,
          boundary_punishment,
-         duplicate_tracking_punishment) = self.calculate_rewards(pmi)
+         duplicate_tracking_punishment) = self.calculate_rewards(config=config, pmi=pmi)
         next_states = self.get_states()
 
         # trace the position matrix
@@ -142,7 +154,7 @@ class Environment:
         return (self.position['all_uav_xs'], self.position['all_uav_ys'],
                 self.position['all_target_xs'], self.position['all_target_ys'])
 
-    def calculate_rewards(self, pmi) -> ([float], float, float, float):
+    def calculate_rewards(self, config, pmi) -> ([float], float, float, float):
         # raw reward first
         target_tracking_rewards = []
         boundary_punishments = []
@@ -150,7 +162,9 @@ class Environment:
         for uav in self.uav_list:
             (target_tracking_reward,
              boundary_punishment,
-             duplicate_tracking_punishment) = uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max)
+             duplicate_tracking_punishment) = uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max,
+                                                                       config["uav"]["gamma"], config["uav"]["gamma"],
+                                                                       config["uav"]["gamma"])
 
             target_tracking_rewards.append(target_tracking_reward)
             boundary_punishments.append(boundary_punishment)

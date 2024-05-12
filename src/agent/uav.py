@@ -1,8 +1,8 @@
 import numpy as np
 from math import cos, sin, sqrt, exp, pi
 from typing import List, Tuple
-from src.models.PMINet import PMINetwork
-from src.agent.target import TARGET
+from models.PMINet import PMINetwork
+from agent.target import TARGET
 from scipy.special import softmax
 
 
@@ -96,7 +96,7 @@ class UAV:
 
         return self.x, self.y, self.h  # 返回agent的位置和朝向(heading/theta)
 
-    def observe_target(self, targets_list: List['TARGET'], relative=False):
+    def observe_target(self, targets_list: List['TARGET'], relative=True):
         """
         Observing target with a radius within dp
         :param relative: relative to uav itself
@@ -109,17 +109,17 @@ class UAV:
             if dist <= self.dp:
                 # add (x, y, vx, vy) information
                 if relative:
-                    self.target_observation.append((target.x - self.x,
-                                                    target.y - self.x,
-                                                    cos(target.h) * target.v_max - cos(self.h) * self.v_max,
-                                                    sin(target.h) * target.v_max - sin(self.h) * self.v_max))
+                    self.target_observation.append(((target.x - self.x) / self.dp,
+                                                    (target.y - self.y) / self.dp,
+                                                    cos(target.h) * target.v_max / self.v_max - cos(self.h),
+                                                    sin(target.h) * target.v_max / self.v_max - sin(self.h)))
                 else:
-                    self.target_observation.append((target.x,
-                                                    target.y,
-                                                    cos(target.h) * target.v_max,
-                                                    sin(target.h) * target.v_max))
+                    self.target_observation.append((target.x / self.dp,
+                                                    target.y / self.dp,
+                                                    cos(target.h) * target.v_max / self.v_max,
+                                                    sin(target.h) * target.v_max / self.v_max))
 
-    def observe_uav(self, uav_list: List['UAV'], relative=False):  # communication
+    def observe_uav(self, uav_list: List['UAV'], relative=True):  # communication
         """
         communicate with other uav_s with a radius within dp
         :param relative: relative to uav itself
@@ -132,24 +132,24 @@ class UAV:
             if dist <= self.dc and uav != self:
                 # add (x, y, vx, vy, a) information
                 if relative:
-                    self.uav_communication.append((uav.x - self.x,
-                                                   uav.y - self.y,
-                                                   cos(uav.h) * uav.v_max - cos(self.h) * self.v_max,
-                                                   sin(uav.h) * uav.v_max - sin(self.h) * self.v_max,
-                                                   uav.a - self.a))
+                    self.uav_communication.append(((uav.x - self.x) / self.dc,
+                                                   (uav.y - self.y) / self.dc,
+                                                   cos(uav.h) - cos(self.h),
+                                                   sin(uav.h) - sin(self.h),
+                                                   (uav.a - self.a) / self.Na))
                 else:
-                    self.uav_communication.append((uav.x,
-                                                   uav.y,
-                                                   cos(uav.h) * uav.v_max,
-                                                   sin(uav.h) * uav.v_max,
-                                                   uav.a))
+                    self.uav_communication.append((uav.x / self.dc,
+                                                   uav.y / self.dc,
+                                                   cos(uav.h),
+                                                   sin(uav.h),
+                                                   uav.a / self.Na))
 
-    def __get_all_local_state(self) -> (List[Tuple[float, float, float, float, int]],
-                                        List[Tuple[float, float, float, float]], Tuple[float, float, int]):
+    def __get_all_local_state(self) -> (List[Tuple[float, float, float, float, float]],
+                                        List[Tuple[float, float, float, float]], Tuple[float, float, float]):
         """
         :return: [(x, y, vx, by, na),...] for uav, [(x, y, vx, vy)] for targets, (x, y, na) for itself
         """
-        return self.uav_communication, self.target_observation, (self.x, self.y, self.a)
+        return self.uav_communication, self.target_observation, (self.x / self.dc, self.y / self.dc, self.a / self.Na)
 
     def __get_local_state_by_weighted_mean(self) -> 'np.ndarray':
         """
@@ -160,7 +160,7 @@ class UAV:
         if communication:
             d_communication = []  # store the distance from each uav to itself
             for x, y, vx, vy, na in communication:
-                d_communication.append(self.distance(x, y, self.x, self.y))
+                d_communication.append(min(self.distance(x, y, self.x, self.y), 1))
 
             # regularization by the distance
             # communication = self.__transform_to_array2d(communication)
@@ -174,7 +174,7 @@ class UAV:
         if observation:
             d_observation = []  # store the distance from each target to itself
             for x, y, vx, vy in observation:
-                d_observation.append(self.distance(x, y, self.x, self.y))
+                d_observation.append(min(self.distance(x, y, self.x, self.y), 1))
 
             # regularization by the distance
             observation = np.array(observation)
@@ -229,7 +229,7 @@ class UAV:
         """
         x_to_0 = self.x - 0
         x_to_max = x_max - self.x
-        y_to_0 = self.x - 0
+        y_to_0 = self.y - 0
         y_to_max = y_max - self.y
         d_bdr = min(x_to_0, x_to_max, y_to_0, y_to_max)
         if 0 <= self.x <= x_max and 0 <= self.y <= y_max:
@@ -241,14 +241,14 @@ class UAV:
             boundary_punishment = 10 * d_bdr / self.dp
         return boundary_punishment
 
-    def calculate_raw_reward(self, uav_list: List['UAV'], x_max, y_max):
+    def calculate_raw_reward(self, uav_list: List['UAV'], x_max, y_max, alpha, beta, gamma):
         """
         calculate three parts of the reward/punishment for this uav
         :return: float, float, float
         """
-        reward = self.__calculate_multi_target_tracking_reward()
-        boundary_punishment = self.__calculate_boundary_punishment(x_max, y_max)
-        punishment = self.__calculate_duplicate_tracking_punishment(uav_list)
+        reward = alpha * self.__calculate_multi_target_tracking_reward()
+        boundary_punishment = beta * self.__calculate_boundary_punishment(x_max, y_max)
+        punishment = gamma * self.__calculate_duplicate_tracking_punishment(uav_list)
         self.raw_reward = reward + boundary_punishment + punishment
         return reward, boundary_punishment, punishment
 

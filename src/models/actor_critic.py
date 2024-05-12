@@ -115,7 +115,7 @@ class ActorCritic:
         probs = self.actor(states_tensor)
         action_dist = torch.distributions.Categorical(probs)  # TODO ?
         action = action_dist.sample()
-        return action
+        return action, probs
 
     def update(self, transition_dict):
         """
