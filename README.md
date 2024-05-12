@@ -15,7 +15,8 @@ pip install numpy matplotlib tqdm tensorboard scipy
 ### Run the code
 
 ```sh
-python actor-critic.py
+cd src
+python main.py
 ```
 
 ### ToDo List
