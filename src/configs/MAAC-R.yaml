@@ -1,7 +1,7 @@
 exp_name: MAAC-R
 result_dir: ../results/MAAC-R
 # 第一个cuda device的编号, -1代表cpu
-first_device: 0
+first_device: 1
 # cuda device的数量, 使用cpu时无效
 gpus: 1
 seed: 1234
@@ -19,9 +19,9 @@ uav:
   h_max: 6  # 表示 pi / 6
   dc: 500
   dp: 200
-  alpha: 0.33
-  beta: 0.33
-  gamma: 0.33
+  alpha: 0.2
+  beta: 0.2
+  gamma: 0.6
 
 target:
   v_max: 25

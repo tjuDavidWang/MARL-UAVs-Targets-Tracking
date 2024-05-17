@@ -70,7 +70,7 @@ class Environment:
                      dc=config["uav"]["dc"],
                      dp=config["uav"]["dp"],
                      dt=config["uav"]["dt"],
-                     init_x=200, init_y=200)
+                     init_x=config['environment']['x_max']/2, init_y=config['environment']['y_max']/2)
 
     def get_states(self) -> (List['np.ndarray']):
         """
