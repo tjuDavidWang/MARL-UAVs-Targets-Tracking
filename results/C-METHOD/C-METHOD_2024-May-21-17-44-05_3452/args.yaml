@@ -1,0 +1,27 @@
+devices:
+- !!python/object/apply:torch.device
+  - cpu
+environment:
+  m_targets: 10
+  n_uav: 10
+  na: 12
+  x_max: 2000
+  y_max: 2000
+exp_name: C-METHOD
+first_device: 0
+gpus: 1
+result_dir: ../results/C-METHOD
+save_dir: ../results/C-METHOD\C-METHOD_2024-May-21-17-44-05_3452
+seed: 1234
+target:
+  h_max: 6
+  v_max: 25
+uav:
+  alpha: 1
+  beta: 1
+  dc: 500
+  dp: 200
+  dt: 0.1
+  gamma: 1
+  h_max: 6
+  v_max: 100

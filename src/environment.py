@@ -45,8 +45,8 @@ class Environment:
         :return: should be the initial states !!!!
         """
         # the initial position of the uav is (self.d_min, self.d_min), having randon headings
-        self.uav_list = [UAV(init_x,
-                             init_y,
+        self.uav_list = [UAV(random.uniform(0, self.x_max),
+                             random.uniform(0, self.y_max),
                              random.uniform(-pi, pi),
                              random.randint(0, self.action_dim - 1),
                              u_v_max, u_h_max, na, dc, dp, dt) for _ in range(self.n_uav)]
