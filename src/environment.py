@@ -45,23 +45,44 @@ class Environment:
         reset the store position to empty
         :return: should be the initial states !!!!
         """
-        # the initial position of the uav is (self.d_min, self.d_min), having randon headings
-        self.uav_list = [UAV(init_x,
-                             init_y,
-                             random.uniform(-pi, pi),
-                             random.randint(0, self.action_dim - 1),
-                             u_v_max, u_h_max, na, dc, dp, dt) for _ in range(self.n_uav)]
-
-        # the initial position of the target is random, having randon headings
-        self.target_list = [TARGET(random.uniform(0, self.x_max),
-                                   random.uniform(0, self.y_max),
-                                   random.uniform(-pi, pi),
-                                   random.uniform(-pi / 6, pi / 6),
-                                   t_v_max, t_h_max, dt)
-                            for _ in range(self.m_targets)]
+        if isinstance(init_x, List) and isinstance(init_y, List):
+            self.uav_list = [UAV(init_x[i],
+                                 init_y[i],
+                                 random.uniform(-pi, pi),
+                                 random.randint(0, self.action_dim - 1),
+                                 u_v_max, u_h_max, na, dc, dp, dt) for i in range(self.n_uav)]
+        elif not isinstance(init_x, List) and not isinstance(init_y, List):
+            self.uav_list = [UAV(init_x,
+                                 init_y,
+                                 random.uniform(-pi, pi),
+                                 random.randint(0, self.action_dim - 1),
+                                 u_v_max, u_h_max, na, dc, dp, dt) for _ in range(self.n_uav)]
+        elif isinstance(init_x, List):
+            self.uav_list = [UAV(init_x[i],
+                                 init_y,
+                                 random.uniform(-pi, pi),
+                                 random.randint(0, self.action_dim - 1),
+                                 u_v_max, u_h_max, na, dc, dp, dt) for i in range(self.n_uav)]
+        elif isinstance(init_y, List):
+            self.uav_list = [UAV(init_x,
+                                 init_y[i],
+                                 random.uniform(-pi, pi),
+                                 random.randint(0, self.action_dim - 1),
+                                 u_v_max, u_h_max, na, dc, dp, dt) for i in range(self.n_uav)]
+        else:
+            print("wrong init position")
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
 
     def reset(self, config):
+        # self.__reset(t_v_max=config["target"]["v_max"],
+        #              t_h_max=pi / float(config["target"]["h_max"]),
+        #              u_v_max=config["uav"]["v_max"],
+        #              u_h_max=pi / float(config["uav"]["h_max"]),
+        #              na=config["environment"]["na"],
+        #              dc=config["uav"]["dc"],
+        #              dp=config["uav"]["dp"],
+        #              dt=config["uav"]["dt"],
+        #              init_x=config['environment']['x_max']/2, init_y=config['environment']['y_max']/2)
         self.__reset(t_v_max=config["target"]["v_max"],
                      t_h_max=pi / float(config["target"]["h_max"]),
                      u_v_max=config["uav"]["v_max"],
@@ -70,7 +91,9 @@ class Environment:
                      dc=config["uav"]["dc"],
                      dp=config["uav"]["dp"],
                      dt=config["uav"]["dt"],
-                     init_x=config['environment']['x_max']/2, init_y=config['environment']['y_max']/2)
+                     init_x=[x * config['environment']['x_max'] / (config['environment']['n_uav'] + 1)
+                             for x in range(1, config['environment']['n_uav']+1)],
+                     init_y=config['environment']['y_max']/2)
 
     def get_states(self) -> (List['np.ndarray']):
         """
@@ -156,16 +179,6 @@ class Environment:
                 self.position['all_target_xs'], self.position['all_target_ys'])
 
     def calculate_rewards(self, config, pmi) -> ([float], float, float, float):
-        # upper bound and lower bound
-        num_steps = config["num_steps"]
-        max_tt_return = 2 * config["environment"]["m_targets"] * num_steps
-        min_tt_return = 0
-        max_bp_return = 0
-        min_bp_return = (-(10 * config["uav"]["v_max"] * config["uav"]["dt"] * num_steps)
-                         / config["uav"]["dp"] * num_steps)
-        max_dtp_return = 0
-        min_dtp_return = -e / 2 * config["environment"]["n_uav"] / 2 * num_steps
-
         # raw reward first
         target_tracking_rewards = []
         boundary_punishments = []
@@ -173,15 +186,9 @@ class Environment:
         for uav in self.uav_list:
             (target_tracking_reward,
              boundary_punishment,
-             duplicate_tracking_punishment) = uav.calculate_raw_reward(self.uav_list, self.x_max, self.y_max)
-
-            # clip and normalize
-            target_tracking_reward = (
-                clip_and_normalize(target_tracking_reward, min_tt_return, max_tt_return))
-            boundary_punishment = (
-                clip_and_normalize(boundary_punishment, min_bp_return, max_bp_return))
-            duplicate_tracking_punishment = (
-                clip_and_normalize(duplicate_tracking_punishment, min_dtp_return, max_dtp_return))
+             duplicate_tracking_punishment) = uav.calculate_raw_reward(self.uav_list, self.target_list, self.x_max, self.y_max)
+            target_tracking_reward /= (config['environment']['m_targets'] // config['environment']['n_uav'])
+            duplicate_tracking_punishment /= config['environment']['n_uav']
 
             # append
             target_tracking_rewards.append(target_tracking_reward)
@@ -194,7 +201,7 @@ class Environment:
 
         rewards = []
         for uav in self.uav_list:
-            reward = uav.calculate_cooperative_reward(self.uav_list, pmi)
+            reward = uav.calculate_cooperative_reward(self.uav_list, pmi, config['cooperative'])
             uav.reward = clip_and_normalize(reward, -1, 1)
             rewards.append(uav.reward)
         return rewards, target_tracking_rewards, boundary_punishments, duplicate_tracking_punishments

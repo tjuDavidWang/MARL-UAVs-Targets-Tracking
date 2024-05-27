@@ -6,6 +6,7 @@ import imageio
 from PIL import Image
 import numpy as np
 
+
 def resize_image(image_path):
     img = Image.open(image_path).convert('RGB')
     # Resize the image to be divisible by 16
@@ -14,6 +15,7 @@ def resize_image(image_path):
     if new_width != img.width or new_height != img.height:
         img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)  # Updated to use Image.Resampling.LANCZOS
     return np.array(img)
+
 
 def get_gradient_color(start_color, end_color, num_points, idx):
     start_rgba = np.array(mcolors.to_rgba(start_color))
@@ -53,6 +55,7 @@ def update(frame, ax, env, uav_plots, target_plots, uav_search_patches, frames, 
         target_plots[i].set_offsets(np.column_stack([target_x, target_y]))
         target_plots[i].set_color(colors)
 
+
 def draw_animation(config, env, num_steps, ep_num, frames=100):
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.set_xlim(-env.x_max / 3, env.x_max / 3 * 4)
@@ -79,7 +82,6 @@ def draw_animation(config, env, num_steps, ep_num, frames=100):
     video_path = os.path.join(config["save_dir"], "animated", f'animated_plot_{ep_num + 1}.mp4')
     writer = imageio.get_writer(video_path, fps=20, codec='libx264', format='FFMPEG', pixelformat='yuv420p')
 
-
     for i in range(frames):
         frame_path = os.path.join(save_dir, f'frame_{i:04d}.png')
         if os.path.exists(frame_path):
@@ -92,6 +94,7 @@ def draw_animation(config, env, num_steps, ep_num, frames=100):
         frame_path = os.path.join(save_dir, f'frame_{i:04d}.png')
         if os.path.exists(frame_path):
             os.remove(frame_path)
+
 
 def plot_reward_curve(config, return_list, name):
     plt.figure(figsize=(6, 6))

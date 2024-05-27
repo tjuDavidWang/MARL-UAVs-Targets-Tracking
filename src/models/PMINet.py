@@ -92,7 +92,7 @@ class PMINetwork(nn.Module):
             output_1_2 = self.forward(input_1_2)
             output_1_3 = self.forward(input_1_3)
             loss = loss_function(output_1_2, output_1_3)
-            avg_loss += loss.item()
+            avg_loss += abs(loss.item())
             # 反向传播和优化
             loss.backward()
             self.optimizer.step()

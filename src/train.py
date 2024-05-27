@@ -5,6 +5,8 @@ import numpy as np
 import torch
 from utils.draw_util import draw_animation
 from torch.utils.tensorboard import SummaryWriter
+import random
+import collections
 
 
 class ReturnValueOfTrain:
@@ -30,6 +32,38 @@ class ReturnValueOfTrain:
         self.duplicate_tracking_punishment_return_list.append(dtp_return)
 
 
+class ReplayBuffer:
+    def __init__(self, capacity):
+        self.buffer = collections.deque(maxlen=capacity)
+
+    def add(self, transition_dict):
+        # 从transition_dict中提取各个列表
+        states = transition_dict['states']
+        actions = transition_dict['actions']
+        rewards = transition_dict['rewards']
+        next_states = transition_dict['next_states']
+
+        # 将各个元素合并成元组，并添加到缓冲区中
+        experiences = zip(states, actions, rewards, next_states)
+        self.buffer.extend(experiences)
+
+    def sample(self, batch_size):
+        transitions = random.sample(self.buffer, min(batch_size, self.size()))
+        states, actions, rewards, next_states = zip(*transitions)
+
+        # 构造返回的字典
+        sample_dict = {
+            'states': states,
+            'actions': actions,
+            'rewards': rewards,
+            'next_states': next_states
+        }
+        return sample_dict
+
+    def size(self):
+        return len(self.buffer)
+
+
 def operate_epoch(config, env, agent, pmi, num_steps, cwriter_state=None, cwriter_prob=None):
     """
     :param config:
@@ -47,7 +81,8 @@ def operate_epoch(config, env, agent, pmi, num_steps, cwriter_state=None, cwrite
     episode_boundary_punishment_return = 0
     episode_duplicate_tracking_punishment_return = 0
 
-    for _ in range(num_steps):
+    for i in range(num_steps):
+        config['step'] = i + 1
         action_list = []
 
         # each uav makes choices first

@@ -35,9 +35,9 @@ class ResidualBlock(nn.Module):
         return out
 
 
-class PolicyNet(nn.Module):
+class ResPolicyNet(nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
-        super(PolicyNet, self).__init__()
+        super(ResPolicyNet, self).__init__()
         self.conv1 = nn.Conv1d(1, hidden_dim, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm1d(hidden_dim)
         self.relu = nn.ReLU(inplace=True)
@@ -58,9 +58,9 @@ class PolicyNet(nn.Module):
         return f.softmax(x, dim=1)
 
 
-class ValueNet(nn.Module):
+class ResValueNet(nn.Module):
     def __init__(self, state_dim, hidden_dim):
-        super(ValueNet, self).__init__()
+        super(ResValueNet, self).__init__()
         self.conv1 = nn.Conv1d(1, hidden_dim, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm1d(hidden_dim)
         self.relu = nn.ReLU(inplace=True)
@@ -82,6 +82,36 @@ class ValueNet(nn.Module):
         return x.squeeze(1)
 
 
+class FnnPolicyNet(nn.Module):
+    def __init__(self, n_states, n_hiddens, n_actions):
+        super(FnnPolicyNet, self).__init__()
+        self.fc1 = nn.Linear(n_states, n_hiddens)
+        self.fc2 = nn.Linear(n_hiddens, n_actions)
+
+    # 前向传播
+    def forward(self, x):
+        x = self.fc1(x)  # [b,n_states]-->[b,n_hiddens]
+        x = f.relu(x)
+        x = self.fc2(x)  # [b,n_hiddens]-->[b,n_actions]
+        # 每个状态对应的动作的概率
+        x = f.softmax(x, dim=1)  # [b,n_actions]-->[b,n_actions]
+        return x
+
+
+class FnnValueNet(nn.Module):
+    def __init__(self, n_states, n_hiddens):
+        super(FnnValueNet, self).__init__()
+        self.fc1 = nn.Linear(n_states, n_hiddens)
+        self.fc2 = nn.Linear(n_hiddens, 1)
+
+    # 前向传播
+    def forward(self, x):
+        x = self.fc1(x)  # [b,n_states]-->[b,n_hiddens]
+        x = f.relu(x)
+        x = self.fc2(x)  # [b,n_hiddens]-->[b,1]
+        return x.squeeze(1)
+
+
 class ActorCritic:
     def __init__(self, state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
                  gamma, device):
@@ -95,8 +125,8 @@ class ActorCritic:
         :param device: 用于训练的设备
         """
         # 策略网络
-        self.actor = PolicyNet(state_dim, hidden_dim, action_dim).to(device)
-        self.critic = ValueNet(state_dim, hidden_dim).to(device)  # 价值网络
+        self.actor = FnnPolicyNet(state_dim, hidden_dim, action_dim).to(device)
+        self.critic = FnnValueNet(state_dim, hidden_dim).to(device)  # 价值网络
         # 策略网络优化器
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
                                                 lr=actor_lr)
@@ -133,7 +163,6 @@ class ActorCritic:
 
         # 时序差分目标
         td_target = rewards + self.gamma * self.critic(next_states)
-
         td_delta = td_target - self.critic(states)  # 时序差分误差
         log_probs = torch.log(self.actor(states).gather(1, actions))
 
