@@ -56,7 +56,12 @@ def update(frame, ax, env, uav_plots, target_plots, uav_search_patches, frames, 
         target_plots[i].set_color(colors)
 
 
-def draw_animation(config, env, num_steps, ep_num, frames=100):
+def draw_animation(config, env, num_steps, ep_num, flag=True):
+    if flag:
+        frames = num_steps
+    else:
+        frames = 100
+
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.set_xlim(-env.x_max / 3, env.x_max / 3 * 4)
     ax.set_ylim(-env.y_max / 3, env.y_max / 3 * 4)
@@ -71,7 +76,7 @@ def draw_animation(config, env, num_steps, ep_num, frames=100):
 
     # Save each frame as PNG
     for frame in range(frames):
-        update(frame, ax, env, uav_plots, target_plots, uav_search_patches, frames, num_steps)
+        update(frame, ax, env, uav_plots, target_plots, uav_search_patches, frames, num_steps, flag)
         plt.draw()
         plt.savefig(os.path.join(save_dir, f'frame_{frame:04d}.png'))
         plt.pause(0.001)  # Pause to ensure the plot updates visibly if needed
