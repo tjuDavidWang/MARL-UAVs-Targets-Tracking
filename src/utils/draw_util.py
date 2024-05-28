@@ -104,10 +104,10 @@ def draw_animation(config, env, num_steps, ep_num, frames=100):
     writer.close()
 
     # Optionally remove PNG files
-    #for frame in range(0, num_steps, step_interval):
-        #frame_path = os.path.join(save_dir, f'frame_{frame:04d}.png')
-        #if os.path.exists(frame_path):
-            #os.remove(frame_path)
+    for frame in range(0, num_steps, step_interval):
+        frame_path = os.path.join(save_dir, f'frame_{frame:04d}.png')
+        if os.path.exists(frame_path):
+            os.remove(frame_path)
 
 
 def plot_reward_curve(config, return_list, name):
