@@ -206,7 +206,7 @@ class UAV:
                 distance = self.__distance(other_uav)
                 if distance <= self.dp:
                     reward = 1 + (self.dp - distance) / self.dp
-                    track_reward += clip_and_normalize(reward, 1, 2)
+                    track_reward += clip_and_normalize(reward, 1, 2, 0)
         return track_reward
 
     def __calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=2) -> float:
@@ -222,7 +222,7 @@ class UAV:
                 distance = self.__distance(other_uav)
                 if distance <= radio * self.dp:
                     punishment = -0.5 * exp((radio * self.dp - distance) / (radio * self.dp))
-                    total_punishment += clip_and_normalize(punishment, -e/2, -1/2)
+                    total_punishment += clip_and_normalize(punishment, -e/2, -1/2, -1)
         return total_punishment
 
     def __calculate_boundary_punishment(self, x_max: float, y_max: float) -> float:
@@ -243,7 +243,7 @@ class UAV:
                 boundary_punishment = 0
         else:
             boundary_punishment = -1/2
-        return clip_and_normalize(boundary_punishment, -1/2, 0)
+        return clip_and_normalize(boundary_punishment, -1/2, 0, -1)
 
     def calculate_raw_reward(self, uav_list: List['UAV'], target__list: List['TAEGET'], x_max, y_max):
         """

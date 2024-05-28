@@ -8,14 +8,14 @@ seed: 42
 cooperative: 0.3
 environment:
   n_uav: 5
-  m_targets: 10
+  m_targets: 5
   x_max: 2000
   y_max: 2000
   na: 12  # 离散化动作空间维数
 
 uav:
   dt: 1
-  v_max: 20
+  v_max: 10
   h_max: 6  # 表示 pi / 6
   dc: 500
   dp: 200
@@ -24,7 +24,7 @@ uav:
   gamma: 0.2
 
 target:
-  v_max: 5
+  v_max: 15
   h_max: 6  # 表示 pi / 6
 
 actor_critic:

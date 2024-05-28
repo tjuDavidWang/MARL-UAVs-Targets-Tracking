@@ -39,6 +39,9 @@ class Environment:
         # position of uav and target
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
 
+        # coverage rate of target
+        self.covered_target_num = []
+
     def __reset(self, t_v_max, t_h_max, u_v_max, u_h_max, na, dc, dp, dt, init_x, init_y):
         """
         reset the location for all uav_s at (init_x, init_y)
@@ -71,7 +74,15 @@ class Environment:
                                  u_v_max, u_h_max, na, dc, dp, dt) for i in range(self.n_uav)]
         else:
             print("wrong init position")
+        # the initial position of the target is random, having randon headings
+        self.target_list = [TARGET(random.uniform(0, self.x_max),
+                                   random.uniform(0, self.y_max),
+                                   random.uniform(-pi, pi),
+                                   random.uniform(-pi / 6, pi / 6),
+                                   t_v_max, t_h_max, dt)
+                            for _ in range(self.m_targets)]
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': []}
+        self.covered_target_num = []
 
     def reset(self, config):
         # self.__reset(t_v_max=config["target"]["v_max"],
@@ -131,6 +142,9 @@ class Environment:
          boundary_punishment,
          duplicate_tracking_punishment) = self.calculate_rewards(config=config, pmi=pmi)
         next_states = self.get_states()
+
+        covered_targets = self.calculate_covered_target()
+        self.covered_target_num.append(covered_targets)
 
         # trace the position matrix
         target_xs, target_ys = self.__get_all_target_position()
@@ -216,3 +230,20 @@ class Environment:
                    u_xy.reshape(-1, 2), delimiter=',', header='x,y', comments='')
         np.savetxt(os.path.join(save_dir, "t_xy", 't_xy' + str(epoch_i) + '.csv'),
                    t_xy.reshape(-1, 2), delimiter=',', header='x,y', comments='')
+
+    def save_covered_num(self, save_dir, epoch_i):
+        covered_target_num_array = np.array(self.covered_target_num).reshape(-1, 1)
+
+        np.savetxt(os.path.join(save_dir, "covered_target_num", 'covered_target_num' + str(epoch_i) + '.csv'),
+                   covered_target_num_array, delimiter=',', header='covered_target_num', comments='')
+
+    def calculate_covered_target(self):
+        covered_target_num = 0
+        for target in self.target_list:
+            for uav in self.uav_list:
+                if uav.distance(uav.x, uav.y, target.x, target.y) < uav.dp:
+                    covered_target_num += 1
+                    break
+        return covered_target_num
+
+

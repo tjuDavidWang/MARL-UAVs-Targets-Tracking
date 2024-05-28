@@ -189,6 +189,7 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
                     if pmi:
                         pmi.save(save_dir=config["save_dir"], epoch_i=i + 1)
                     env.save_position(save_dir=config["save_dir"], epoch_i=i + 1)
+                    env.save_covered_num(save_dir=config["save_dir"], epoch_i=i + 1)
 
                 # episode end
                 pbar.update(1)
@@ -222,5 +223,6 @@ def evaluate(config, env, agent, pmi, num_steps):
     # save results and weights
     draw_animation(config=config, env=env, num_steps=num_steps, ep_num=0)
     env.save_position(save_dir=config["save_dir"], epoch_i=0)
+    env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
 
     return return_value.item()

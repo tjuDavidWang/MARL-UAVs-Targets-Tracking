@@ -40,9 +40,17 @@ def save_csv(config, return_list):
             writer.writerow([reward])
 
 
-def clip_and_normalize(val, floor, ceil):
+def clip_and_normalize(val, floor, ceil, choice=1):
+    if val < floor or val > ceil:
+        val = max(val, floor)
+        val = min(val, ceil)
+        print("overstep in clip.")
     val = np.clip(val, floor, ceil)
     mid = (floor + ceil) / 2
-    val = (val - mid) / (mid - floor)  # (-1, 1)
-    # val = (val - floor) / (ceil - floor)  # (0, 1)
+    if choice == -1:
+        val = (val - floor) / (ceil - floor) - 1  # (-1, 0)
+    elif choice == 0:
+        val = (val - floor) / (ceil - floor)  # (0, 1)
+    else:
+        val = (val - mid) / (mid - floor)  # (-1, 1)
     return val

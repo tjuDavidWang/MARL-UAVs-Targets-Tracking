@@ -11,7 +11,7 @@ def get_config(config_file):
     :param config_file: str, 超参数所在的文件位置
     :return: dict, 解析后的超参数字典
     """
-    with open(config_file, 'r') as f:
+    with open(config_file, 'r', encoding="UTF-8") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     # set global seed of random, numpy and torch
@@ -41,6 +41,7 @@ def get_config(config_file):
     mkdir(os.path.join(save_dir, "animated"))
     mkdir(os.path.join(save_dir, "t_xy"))
     mkdir(os.path.join(save_dir, "u_xy"))
+    mkdir(os.path.join(save_dir, "covered_target_num"))
 
     # create cuda devices
     set_device(config)

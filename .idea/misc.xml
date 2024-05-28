@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="pytorch1.11" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="pytorch1.11" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="ml" project-jdk-type="Python SDK" />
 </project>
