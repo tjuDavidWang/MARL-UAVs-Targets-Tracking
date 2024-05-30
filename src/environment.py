@@ -198,11 +198,17 @@ class Environment:
         boundary_punishments = []
         duplicate_tracking_punishments = []
         for uav in self.uav_list:
+            # raw reward for each uav (not clipped)
             (target_tracking_reward,
              boundary_punishment,
              duplicate_tracking_punishment) = uav.calculate_raw_reward(self.uav_list, self.target_list, self.x_max, self.y_max)
-            target_tracking_reward /= (config['environment']['m_targets'] // config['environment']['n_uav'])
-            duplicate_tracking_punishment /= config['environment']['n_uav']
+
+            # clip op
+            target_tracking_reward = clip_and_normalize(target_tracking_reward,
+                                                        0, 2 * config['environment']['m_targets'], 0)
+            duplicate_tracking_punishment = clip_and_normalize(duplicate_tracking_punishment,
+                                                               -e / 2 * config['environment']['n_uav'], 0, -1)
+            boundary_punishment = clip_and_normalize(boundary_punishment, -1/2, 0, -1)
 
             # append
             target_tracking_rewards.append(target_tracking_reward)

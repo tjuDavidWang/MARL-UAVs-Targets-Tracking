@@ -67,12 +67,16 @@ def main(args):
     agent.load(args.actor_path, args.critic_path)
 
     # 初始化 pmi
-    if args.method == "MAAC":
+    if args.method == "MAAC" or args.method == "MAAC-G":
         pmi = None
-    else:
+        if args.method == "MAAC":
+            config["cooperative"] = 0  # 只考虑无人机自己的奖励
+    elif args.method == "MAAC-R":
         pmi = PMINetwork(hidden_dim=config["pmi"]["hidden_dim"],
                          b2_size=config["pmi"]["b2_size"])
         pmi.load(args.pmi_path)
+    else:
+        return
 
     if args.phase == "train":
         return_list = train(config=config,

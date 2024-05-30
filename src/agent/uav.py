@@ -206,7 +206,8 @@ class UAV:
                 distance = self.__distance(other_uav)
                 if distance <= self.dp:
                     reward = 1 + (self.dp - distance) / self.dp
-                    track_reward += clip_and_normalize(reward, 1, 2, 0)
+                    # track_reward += clip_and_normalize(reward, 1, 2, 0)
+                    track_reward += reward  # 没有clip, 在调用时外部clip
         return track_reward
 
     def __calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=2) -> float:
@@ -222,7 +223,8 @@ class UAV:
                 distance = self.__distance(other_uav)
                 if distance <= radio * self.dp:
                     punishment = -0.5 * exp((radio * self.dp - distance) / (radio * self.dp))
-                    total_punishment += clip_and_normalize(punishment, -e/2, -1/2, -1)
+                    # total_punishment += clip_and_normalize(punishment, -e/2, -1/2, -1)
+                    total_punishment += punishment  # 没有clip, 在调用时外部clip
         return total_punishment
 
     def __calculate_boundary_punishment(self, x_max: float, y_max: float) -> float:
@@ -243,7 +245,8 @@ class UAV:
                 boundary_punishment = 0
         else:
             boundary_punishment = -1/2
-        return clip_and_normalize(boundary_punishment, -1/2, 0, -1)
+        return boundary_punishment  # 没有clip, 在调用时外部clip
+        # return clip_and_normalize(boundary_punishment, -1/2, 0, -1)
 
     def calculate_raw_reward(self, uav_list: List['UAV'], target__list: List['TAEGET'], x_max, y_max):
         """
@@ -263,6 +266,9 @@ class UAV:
         :param a: float, proportion of selfish and sharing
         :return:
         """
+        if a == 0:  # 提前判断，节省计算的复杂度
+            return self.raw_reward
+
         neighbor_rewards = []
         neighbor_dependencies = []
         la = self.get_local_state()
@@ -290,6 +296,9 @@ class UAV:
         :param a: float, proportion of selfish and sharing
         :return:
         """
+        if a == 0:  # 提前判断，节省计算的复杂度
+            return self.raw_reward
+
         neighbor_rewards = []
         for other_uav in uav_list:
             if other_uav != self and self.__distance(other_uav) <= self.dp:
@@ -300,6 +309,12 @@ class UAV:
         return reward
 
     def calculate_cooperative_reward(self, uav_list: List['UAV'], pmi_net=None, a=0.5) -> float:
+        """
+        :param uav_list:
+        :param pmi_net:
+        :param a: 0: selfish, 1: completely shared
+        :return:
+        """
         if pmi_net:
             return self.__calculate_cooperative_reward_by_pmi(uav_list, pmi_net, a)
         else:
