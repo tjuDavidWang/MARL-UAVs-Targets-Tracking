@@ -104,6 +104,10 @@ def main(args):
                       "boundary_punishment_return_list")
     plot_reward_curve(config, return_list["duplicate_tracking_punishment_return_list"],
                       "duplicate_tracking_punishment_return_list")
+    plot_reward_curve(config, return_list["average_covered_targets_list"],
+                      "average_covered_targets_list")
+    plot_reward_curve(config, return_list["max_covered_targets_list"],
+                      "max_covered_targets_list")
 
 
 if __name__ == "__main__":

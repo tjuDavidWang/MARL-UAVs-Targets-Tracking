@@ -37,19 +37,24 @@ class TARGET:
         self.x += dx
         self.y += dy
 
-        if self.x > x_max:
-            self.x = x_max
-        if self.x < 0:
-            self.x = 0
+        # if self.x > x_max:
+        #     self.x = x_max
+        # if self.x < 0:
+        #     self.x = 0
+        #
+        # if self.y > y_max:
+        #     self.y = y_max
+        # if self.y < 0:
+        #     self.y = 0
 
-        if self.y > y_max:
-            self.y = y_max
-        if self.y < 0:
-            self.y = 0
-
-        self.h += self.dt * self.a  # 更新朝向角度
-        self.h = (self.h + pi) % (2 * pi) - pi  # 确保朝向角度在 [-pi, pi) 范围内
-        if self.x < 0 or self.x > x_max or 0 > self.y or self.y > y_max:
+        # self.h += self.dt * self.a  # 更新朝向角度
+        # self.h = (self.h + pi) % (2 * pi) - pi  # 确保朝向角度在 [-pi, pi) 范围内
+        if 0 > self.y or self.y > y_max:
             self.h = -self.h
+        elif self.x < 0 or self.x > x_max:
+            if self.h > 0:
+                self.h = pi-self.h
+            else:
+                self.h = -pi-self.h
 
         return self.x, self.y

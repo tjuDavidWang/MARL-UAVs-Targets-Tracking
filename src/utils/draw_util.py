@@ -65,7 +65,7 @@ def update(ax, env, uav_plots, target_plots, uav_search_patches, frame, frames, 
         text_obj.remove()
 
     # 绘制新的文本对象，没有边框，颜色为深蓝色
-    text_obj =ax.text(0.02, 0.98, text_str, transform=ax.transAxes, fontsize=10, verticalalignment='top',
+    text_obj = ax.text(0.02, 0.98, text_str, transform=ax.transAxes, fontsize=10, verticalalignment='top',
                        color='black')
 
 
@@ -94,7 +94,7 @@ def draw_animation(config, env, num_steps, ep_num, frames=100):
 
     # Generate MP4
     video_path = os.path.join(config["save_dir"], "animated", f'animated_plot_{ep_num + 1}.mp4')
-    writer = imageio.get_writer(video_path, fps=1, codec='libx264', format='FFMPEG', pixelformat='yuv420p')
+    writer = imageio.get_writer(video_path, fps=5, codec='libx264', format='FFMPEG', pixelformat='yuv420p')
 
     for frame in range(0, num_steps, step_interval):
         frame_path = os.path.join(save_dir, f'frame_{frame:04d}.png')

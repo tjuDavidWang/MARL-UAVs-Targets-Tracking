@@ -15,21 +15,27 @@ class ReturnValueOfTrain:
         self.target_tracking_return_list = []
         self.boundary_punishment_return_list = []
         self.duplicate_tracking_punishment_return_list = []
+        self.average_covered_targets_list = []
+        self.max_covered_targets_list = []
 
     def item(self):
         value_dict = {
             'return_list': self.return_list,
             'target_tracking_return_list': self.target_tracking_return_list,
             'boundary_punishment_return_list': self.boundary_punishment_return_list,
-            'duplicate_tracking_punishment_return_list': self.duplicate_tracking_punishment_return_list
+            'duplicate_tracking_punishment_return_list': self.duplicate_tracking_punishment_return_list,
+            'average_covered_targets_list': self.average_covered_targets_list,
+            'max_covered_targets_list': self.max_covered_targets_list
         }
         return value_dict
 
-    def save_epoch(self, reward, tt_return, bp_return, dtp_return):
+    def save_epoch(self, reward, tt_return, bp_return, dtp_return, average_targets, max_targets):
         self.return_list.append(reward)
         self.target_tracking_return_list.append(tt_return)
         self.boundary_punishment_return_list.append(bp_return)
         self.duplicate_tracking_punishment_return_list.append(dtp_return)
+        self.average_covered_targets_list.append(average_targets)
+        self.max_covered_targets_list.append(max_targets)
 
 
 class ReplayBuffer:
@@ -149,6 +155,7 @@ def operate_epoch(config, env, agent, pmi, num_steps, cwriter_state=None, cwrite
     episode_target_tracking_return = 0
     episode_boundary_punishment_return = 0
     episode_duplicate_tracking_punishment_return = 0
+    covered_targets_list = []
 
     for i in range(num_steps):
         config['step'] = i + 1
@@ -166,7 +173,7 @@ def operate_epoch(config, env, agent, pmi, num_steps, cwriter_state=None, cwrite
             action_list.append(action.item())
 
         # use action_list to update the environment
-        next_state_list, reward_list = env.step(config, pmi, action_list)  # action: List[int]
+        next_state_list, reward_list, covered_targets = env.step(config, pmi, action_list)  # action: List[int]
         transition_dict['actions'].extend(action_list)
         transition_dict['next_states'].extend(next_state_list)
         transition_dict['rewards'].extend(reward_list['rewards'])
@@ -175,14 +182,18 @@ def operate_epoch(config, env, agent, pmi, num_steps, cwriter_state=None, cwrite
         episode_target_tracking_return += sum(reward_list['target_tracking_reward'])
         episode_boundary_punishment_return += sum(reward_list['boundary_punishment'])
         episode_duplicate_tracking_punishment_return += sum(reward_list['duplicate_tracking_punishment'])
+        covered_targets_list.append(covered_targets)
 
     episode_return /= num_steps * env.n_uav
     episode_target_tracking_return /= num_steps * env.n_uav
     episode_boundary_punishment_return /= num_steps * env.n_uav
     episode_duplicate_tracking_punishment_return /= num_steps * env.n_uav
+    average_covered_targets = np.mean(covered_targets_list)
+    max_covered_targets = np.max(covered_targets_list)
 
     return (transition_dict, episode_return, episode_target_tracking_return,
-            episode_boundary_punishment_return, episode_duplicate_tracking_punishment_return)
+            episode_boundary_punishment_return, episode_duplicate_tracking_punishment_return,
+            average_covered_targets, max_covered_targets)
 
 
 def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
@@ -224,14 +235,16 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
                 # transition_dict, reward, tt_return, bp_return, \
                 #     dtp_return = operate_epoch(config, env, agent, pmi, num_steps, cwriter_state, cwriter_prob)
                 transition_dict, reward, tt_return, bp_return, \
-                    dtp_return = operate_epoch(config, env, agent, pmi, num_steps)
+                    dtp_return, average_targets, max_targets = operate_epoch(config, env, agent, pmi, num_steps)
                 writer.add_scalar('reward', reward, i)
                 writer.add_scalar('target_tracking_return', tt_return, i)
                 writer.add_scalar('boundary_punishment', bp_return, i)
                 writer.add_scalar('duplicate_tracking_punishment', dtp_return, i)
+                writer.add_scalar('average_covered_targets', average_targets, i)
+                writer.add_scalar('max_covered_targets', max_targets, i)
 
                 # saving return lists
-                return_value.save_epoch(reward, tt_return, bp_return, dtp_return)
+                return_value.save_epoch(reward, tt_return, bp_return, dtp_return, average_targets, max_targets)
 
                 # sample from buffer
                 buffer.add(transition_dict)
@@ -298,10 +311,10 @@ def evaluate(config, env, agent, pmi, num_steps):
     env.reset(config=config)
 
     # episode start
-    transition_dict, reward, tt_return, bp_return, dtp_return = operate_epoch(config, env, agent, pmi, num_steps)
+    transition_dict, reward, tt_return, bp_return, dtp_return, average_targets, max_targets = operate_epoch(config, env, agent, pmi, num_steps)
 
     # saving return lists
-    return_value.save_epoch(reward, tt_return, bp_return, dtp_return)
+    return_value.save_epoch(reward, tt_return, bp_return, dtp_return,average_targets, max_targets)
 
     # save results and weights
     draw_animation(config=config, env=env, num_steps=num_steps, ep_num=0)

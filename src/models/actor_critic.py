@@ -156,6 +156,7 @@ class ActorCritic:
                               dtype=torch.float).to(self.device)
         actions = torch.tensor(transition_dict['actions']).view(-1, 1).to(
             self.device)
+        # actions = actions.long()
         rewards = torch.tensor(transition_dict['rewards'],
                                dtype=torch.float).view(-1, 1).to(self.device).squeeze()
         next_states = torch.tensor(np.array(transition_dict['next_states']),

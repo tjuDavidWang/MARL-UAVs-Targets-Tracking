@@ -1,5 +1,5 @@
-exp_name: MAAC
-result_dir: ../results/MAAC
+exp_name: MAAC-G
+result_dir: ../results/MAAC-G
 # 第一个cuda device的编号, -1代表cpu
 first_device: 0
 # cuda device的数量, 使用cpu时无效

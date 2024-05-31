@@ -161,7 +161,7 @@ class Environment:
             'duplicate_tracking_punishment': duplicate_tracking_punishment
         }
 
-        return next_states, reward
+        return next_states, reward, covered_targets
 
     def __get_all_uav_position(self) -> (List[float], List[float]):
         """
