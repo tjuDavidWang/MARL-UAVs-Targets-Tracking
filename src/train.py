@@ -64,6 +64,75 @@ class ReplayBuffer:
         return len(self.buffer)
 
 
+class PrioritizedReplayBuffer:
+    def __init__(self, capacity, alpha=0.6):
+        self.capacity = capacity
+        self.alpha = alpha
+        self.buffer = collections.deque(maxlen=capacity)
+        self.priorities = np.zeros((capacity,), dtype=np.float32)
+        self.pos = 0
+
+    def add(self, transition_dict):
+        states = transition_dict['states']
+        actions = transition_dict['actions']
+        rewards = transition_dict['rewards']
+        next_states = transition_dict['next_states']
+
+        experiences = zip(states, actions, rewards, next_states)
+
+        for experience in experiences:
+            max_priority = self.priorities.max() if self.buffer else 1.0
+
+            if len(self.buffer) < self.capacity:
+                self.buffer.append(experience)
+            else:
+                self.buffer[self.pos] = experience
+
+            self.priorities[self.pos] = max_priority
+            self.pos = (self.pos + 1) % self.capacity
+
+    def sample(self, batch_size, beta=0.4):
+        if len(self.buffer) == 0:
+            return dict(states=[], actions=[], rewards=[], next_states=[]), None, None
+
+        if len(self.buffer) == self.capacity:
+            priorities = self.priorities
+        else:
+            priorities = self.priorities[:self.pos]
+
+        probabilities = priorities ** self.alpha
+        probabilities /= probabilities.sum()
+
+        indices = np.random.choice(len(self.buffer), min(batch_size, len(self.buffer)), p=probabilities)
+        samples = [self.buffer[idx] for idx in indices]
+
+        total = len(self.buffer)
+        weights = (total * probabilities[indices]) ** (-beta)
+        weights /= weights.max()
+        weights = np.array(weights, dtype=np.float32)
+
+        batch = list(zip(*samples))
+        states = np.array(batch[0])
+        actions = np.array(batch[1])
+        rewards = np.array(batch[2])
+        next_states = np.array(batch[3])
+
+        sample_dict = {
+            'states': states,
+            'actions': actions,
+            'rewards': rewards,
+            'next_states': next_states,
+        }
+        return sample_dict, indices, weights
+
+    def update_priorities(self, batch_indices, batch_priorities):
+        for idx, priority in zip(batch_indices, batch_priorities):
+            self.priorities[idx] = priority
+
+    def size(self):
+        return len(self.buffer)
+
+
 def operate_epoch(config, env, agent, pmi, num_steps, cwriter_state=None, cwriter_prob=None):
     """
     :param config:
@@ -131,6 +200,12 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
     save_dir = os.path.join(config["save_dir"], "logs")
     writer = SummaryWriter(log_dir=save_dir)  # 可以指定log存储的目录
     return_value = ReturnValueOfTrain()
+    # buffer = ReplayBuffer(config["actor_critic"]["buffer_size"])
+    buffer = PrioritizedReplayBuffer(config["actor_critic"]["buffer_size"])
+    if config["actor_critic"]["sample_size"] > 0:
+        sample_size = config["actor_critic"]["sample_size"]
+    else:
+        sample_size = config["environment"]["n_uav"] * num_steps
 
     with open(os.path.join(save_dir, 'state.csv'), mode='w', newline='') as state_file, \
             open(os.path.join(save_dir, 'prob.csv'), mode='w', newline='') as prob_file:
@@ -158,14 +233,22 @@ def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
                 # saving return lists
                 return_value.save_epoch(reward, tt_return, bp_return, dtp_return)
 
+                # sample from buffer
+                buffer.add(transition_dict)
+                # sample_dict = buffer.sample(sample_size)
+                sample_dict, indices, _ = buffer.sample(sample_size)
+
                 # update actor-critic network
-                actor_loss, critic_loss = agent.update(transition_dict)
+                actor_loss, critic_loss, td_errors = agent.update(sample_dict)
                 writer.add_scalar('actor_loss', actor_loss, i)
                 writer.add_scalar('critic_loss', critic_loss, i)
 
+                # update buffer
+                buffer.update_priorities(indices, td_errors.abs().detach().cpu().numpy())
+
                 # update pmi network
                 if pmi:
-                    avg_pmi_loss = pmi.train_pmi(config, torch.tensor(np.array(transition_dict["states"])), env.n_uav)
+                    avg_pmi_loss = pmi.train_pmi(config, torch.tensor(np.array(sample_dict["states"])), env.n_uav)
                     writer.add_scalar('avg_pmi_loss', avg_pmi_loss, i)
 
                 # save & print

@@ -175,7 +175,7 @@ class ActorCritic:
         self.actor_optimizer.step()
         self.critic_optimizer.step()
 
-        return actor_loss, critic_loss
+        return actor_loss, critic_loss, td_delta
 
     def save(self, save_dir, epoch_i):
         torch.save({

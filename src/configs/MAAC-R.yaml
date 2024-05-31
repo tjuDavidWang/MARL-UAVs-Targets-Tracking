@@ -28,7 +28,8 @@ target:
   h_max: 6  # 表示 pi / 6
 
 actor_critic:
-  sample_size: 20000
+  buffer_size: 1000000
+  sample_size: 0  # 表示每次采样的大小为每个epoch的step数
   actor_lr: 1e-4
   critic_lr: 1e-4
   hidden_dim: 256
