@@ -5,6 +5,7 @@ first_device: 0
 # cuda device的数量, 使用cpu时无效
 gpus: 1
 seed: 42
+cooperative: 0.3
 environment:
   n_uav: 10
   m_targets: 10
