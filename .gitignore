@@ -4,8 +4,8 @@
 
 src/agent/__pycache__/target.cpython-310.pyc
 src/agent/__pycache__/uav.cpython-310.pyc
-src/model/__pycache__/actor_critic.cpython-310.pyc
-src/model/__pycache__/PMINet.cpython-310.pyc
+src/models/__pycache__/actor_critic.cpython-310.pyc
+src/models/__pycache__/PMINet.cpython-310.pyc
 src/utils/__pycache__/args_util.cpython-310.pyc
 src/utils/__pycache__/data_util.cpython-310.pyc
 src/utils/__pycache__/draw_util.cpython-310.pyc

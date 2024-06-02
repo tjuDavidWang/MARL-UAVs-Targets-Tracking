@@ -314,7 +314,76 @@ def evaluate(config, env, agent, pmi, num_steps):
     transition_dict, reward, tt_return, bp_return, dtp_return, average_targets, max_targets = operate_epoch(config, env, agent, pmi, num_steps)
 
     # saving return lists
-    return_value.save_epoch(reward, tt_return, bp_return, dtp_return,average_targets, max_targets)
+    return_value.save_epoch(reward, tt_return, bp_return, dtp_return, average_targets, max_targets)
+
+    # save results and weights
+    draw_animation(config=config, env=env, num_steps=num_steps, ep_num=0)
+    env.save_position(save_dir=config["save_dir"], epoch_i=0)
+    env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
+
+    return return_value.item()
+
+def run_epoch(config, pmi, env, num_steps):
+    """
+    :param config:
+    :param env:
+    :param num_steps:
+    :return:
+    """
+    transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': []}
+    episode_return = 0
+    episode_target_tracking_return = 0
+    episode_boundary_punishment_return = 0
+    episode_duplicate_tracking_punishment_return = 0
+    covered_targets_list = []
+
+    for _ in range(num_steps):
+        action_list = []
+        uav_tracking_status = [0] * len(env.uav_list)
+
+        # each uav makes choices first
+        for uav in env.uav_list:
+            action, target_index = uav.get_action_by_direction(env.target_list, uav_tracking_status)  # TODO
+            uav_tracking_status[target_index] = 1
+            action_list.append(action)
+
+        next_state_list, reward_list, covered_targets = env.step(config, pmi, action_list)  # TODO
+
+        # use action_list to update the environment
+        transition_dict['actions'].extend(action_list)
+        transition_dict['rewards'].extend(reward_list['rewards'])
+
+        episode_return += sum(reward_list['rewards'])
+        episode_target_tracking_return += sum(reward_list['target_tracking_reward'])
+        episode_boundary_punishment_return += sum(reward_list['boundary_punishment'])
+        episode_duplicate_tracking_punishment_return += sum(reward_list['duplicate_tracking_punishment'])
+        covered_targets_list.append(covered_targets)
+
+    average_covered_targets = np.mean(covered_targets_list)
+    max_covered_targets = np.max(covered_targets_list)
+
+    return (transition_dict, episode_return, episode_target_tracking_return,
+            episode_boundary_punishment_return, episode_duplicate_tracking_punishment_return,
+            average_covered_targets, max_covered_targets)
+
+def run(config, env, pmi, num_steps):
+    """
+    :param config:
+    :param num_steps: 每局进行的步数
+    :param env:
+    :return:
+    """
+    # initialize saving list
+    return_value = ReturnValueOfTrain()
+
+    # reset environment from config yaml file
+    env.reset(config=config)
+
+    # episode start
+    transition_dict, reward, tt_return, bp_return, dtp_return, average_targets, max_targets = run_epoch(config, pmi, env, num_steps)
+
+    # saving return lists
+    return_value.save_epoch(reward, tt_return, bp_return, dtp_return, average_targets, max_targets)
 
     # save results and weights
     draw_animation(config=config, env=env, num_steps=num_steps, ep_num=0)

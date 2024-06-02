@@ -1,5 +1,5 @@
 import numpy as np
-from math import cos, sin, sqrt, exp, pi, e
+from math import cos, sin, sqrt, exp, pi, e, atan2
 from typing import List, Tuple
 from models.PMINet import PMINetwork
 from agent.target import TARGET
@@ -319,3 +319,36 @@ class UAV:
             return self.__calculate_cooperative_reward_by_pmi(uav_list, pmi_net, a)
         else:
             return self.__calculate_cooperative_reward_by_mean(uav_list, a)
+
+    def find_closest_a_idx(self, delta_angle: float) -> int:
+        na = (delta_angle * (self.Na - 1) + (self.Na + 1) * self.h_max) / (2 * self.h_max)
+        a_idx = round(na) - 1  # 四舍五入并转为索引
+        a_idx = max(0, min(a_idx, self.Na - 1))  # 保证 a_idx 在有效范围内
+        return a_idx
+
+    def get_action_by_direction(self, target_list, uav_tracking_status):
+        distance = []
+        # 遍历目标列表，计算每个目标的距离，并同时检查是否未被追踪
+        for idx, target in enumerate(target_list):
+            if uav_tracking_status[idx] == 0:  # 只考虑未被追踪的目标
+                d = self.__distance(target)
+                distance.append((d, idx))  # 将距离和对应的索引一起保存
+
+        if not distance:  # 如果所有目标都被追踪，默认选择一个最近的目标
+            for idx, target in enumerate(target_list):
+                d = self.__distance(target)
+                distance.append((d, idx))
+
+        # 找到最小距离和对应的索引
+        min_distance, min_index = min(distance, key=lambda x: x[0])
+        min_target = target_list[min_index]
+
+        # 计算水平距离和垂直距离
+        dx = min_target.x - self.x
+        dy = min_target.y - self.y
+        # 计算夹角（以弧度为单位）
+        best_angle = atan2(dy, dx)
+
+        delta_angle = best_angle - self.h
+        actual_action = self.find_closest_a_idx(delta_angle)
+        return actual_action, min_index

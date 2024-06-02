@@ -1,10 +1,11 @@
-exp_name: C-METHOD
-result_dir: ../results/C-METHOD
+exp_name: MAAC
+result_dir: ../results/MAAC
 # 第一个cuda device的编号, -1代表cpu
 first_device: 0
 # cuda device的数量, 使用cpu时无效
 gpus: 1
 seed: 42
+cooperative: 0
 environment:
   n_uav: 10
   m_targets: 10
@@ -26,10 +27,5 @@ target:
   v_max: 5
   h_max: 6  # 表示 pi / 6
 
-actor_critic:
-  buffer_size: 1000000
-  sample_size: 0  # 表示每次采样的大小为每个epoch的step数
-  actor_lr: 1e-4
-  critic_lr: 5e-4
-  hidden_dim: 128
-  gamma: 0.95
+
+
