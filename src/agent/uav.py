@@ -1,3 +1,4 @@
+import random
 import numpy as np
 from math import cos, sin, sqrt, exp, pi, e, atan2
 from typing import List, Tuple
@@ -320,35 +321,49 @@ class UAV:
         else:
             return self.__calculate_cooperative_reward_by_mean(uav_list, a)
 
-    def find_closest_a_idx(self, delta_angle: float) -> int:
-        na = (delta_angle * (self.Na - 1) + (self.Na + 1) * self.h_max) / (2 * self.h_max)
-        a_idx = round(na) - 1  # 四舍五入并转为索引
-        a_idx = max(0, min(a_idx, self.Na - 1))  # 保证 a_idx 在有效范围内
-        return a_idx
+    def get_action_by_direction(self, target_list, uav_list):
+        def distance(x1, y1, x2, y2):
+            return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-    def get_action_by_direction(self, target_list, uav_tracking_status):
-        distance = []
-        # 遍历目标列表，计算每个目标的距离，并同时检查是否未被追踪
-        for idx, target in enumerate(target_list):
-            if uav_tracking_status[idx] == 0:  # 只考虑未被追踪的目标
-                d = self.__distance(target)
-                distance.append((d, idx))  # 将距离和对应的索引一起保存
+        # 奖励和惩罚权重
+        target_reward_weight = 1.0
+        repetition_penalty_weight = 0.8
+        self.epsilon = 0.25
+        self.continue_tracing = 0.3
+        
+        best_score = float('-inf')
+        best_angle = 0.0
 
-        if not distance:  # 如果所有目标都被追踪，默认选择一个最近的目标
-            for idx, target in enumerate(target_list):
-                d = self.__distance(target)
-                distance.append((d, idx))
+        # 随机扰动：以epsilon的概率选择随机目标
+        if random.random() < self.epsilon:
+            return np.random.randint(0, self.Na)
+        else:
+            for target in target_list:
+                target_x, target_y = target.x, target.y
 
-        # 找到最小距离和对应的索引
-        min_distance, min_index = min(distance, key=lambda x: x[0])
-        min_target = target_list[min_index]
+                # 当前无人机到目标的距离
+                dist_to_target = distance(self.x, self.y, target_x, target_y)
 
-        # 计算水平距离和垂直距离
-        dx = min_target.x - self.x
-        dy = min_target.y - self.y
-        # 计算夹角（以弧度为单位）
-        best_angle = atan2(dy, dx)
+                # 重复追踪的惩罚，考虑其他无人机在重复追踪半径内是否在追踪同一目标
+                repetition_penalty = 0.0
+                for uav in uav_list:
+                    uav_x, uav_y = uav.x, uav.y
+                    if (uav_x, uav_y) != (self.x, self.y):
+                        dist_to_target_from_other_uav = distance(uav_x, uav_y, target_x, target_y)
+                        if dist_to_target_from_other_uav < self.dc:
+                            repetition_penalty += repetition_penalty_weight
 
-        delta_angle = best_angle - self.h
-        actual_action = self.find_closest_a_idx(delta_angle)
-        return actual_action, min_index
+                # 计算当前目标的得分
+                score = target_reward_weight / dist_to_target - repetition_penalty
+
+                # 根据得分选择最优目标
+                if score > best_score:
+                    best_score = score
+                    best_angle = np.arctan2(target_y - self.y, target_x - self.x) - self.h
+
+        # 以continue_tracing的概率保持上一个动作
+        if random.random() < self.continue_tracing:
+            best_angle = 0
+            
+        actual_action = self.find_closest_a_idx(best_angle)
+        return actual_action

@@ -339,12 +339,15 @@ def run_epoch(config, pmi, env, num_steps):
 
     for _ in range(num_steps):
         action_list = []
-        uav_tracking_status = [0] * len(env.uav_list)
+        # uav_tracking_status = [0] * len(env.uav_list)
 
-        # each uav makes choices first
+        # # each uav makes choices first
+        # for uav in env.uav_list:
+        #     action, target_index = uav.get_action_by_direction(env.target_list, env.uav_list, uav_tracking_status)  # TODO
+        #     uav_tracking_status[target_index] = 1
+        #     action_list.append(action)
         for uav in env.uav_list:
-            action, target_index = uav.get_action_by_direction(env.target_list, uav_tracking_status)  # TODO
-            uav_tracking_status[target_index] = 1
+            action = uav.get_action_by_direction(env.target_list, env.uav_list)  # TODO
             action_list.append(action)
 
         next_state_list, reward_list, covered_targets = env.step(config, pmi, action_list)  # TODO
