@@ -9,7 +9,8 @@ You can simply use pip install to config the environment:
 
 ```sh
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install numpy matplotlib tqdm tensorboard scipy imageio
+pip install numpy matplotlib tqdm tensorboard scipy
+pip install imageio[ffmpeg]
 ```
 
 ### Run the code
