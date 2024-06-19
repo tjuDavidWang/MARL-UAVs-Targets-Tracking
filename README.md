@@ -26,6 +26,6 @@ python main.py
   - [x] Actor-Critic framework
 - [x] MAAC-R
   - [x] reciprocal reward (with PMI network)
-- [ ] MAAC-G
-  - [ ] receive the global reward
-- [ ] 3D demo
+- [x] MAAC-G
+  - [x] receive the global reward
+- [x] 3D demo
